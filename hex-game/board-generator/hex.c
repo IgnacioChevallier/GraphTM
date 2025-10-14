@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifndef BOARD_DIM
     #define BOARD_DIM 11
@@ -143,6 +144,37 @@ void hg_print(struct hex_game *hg)
 	}
 }
 
+static inline char hg_cell_symbol(struct hex_game *hg, int i, int j)
+{
+    if (hg->board[((i+1)*(BOARD_DIM+2) + j + 1)*2] == 1) {
+        return 'X';
+    } else if (hg->board[((i+1)*(BOARD_DIM+2) + j + 1)*2 + 1] == 1) {
+        return 'O';
+    }
+    return '.'; // empty
+}
+
+void hg_append_game_json(struct hex_game *hg, int winner, const char *file_path)
+{
+    FILE *f = fopen(file_path, "a");
+    if (f == NULL) {
+		printf("Failed to open file %s\n", file_path);
+        return; // silently skip if path invalid
+    }
+
+    fprintf(f, "{\"winner\":%d,\"board\":[", winner);
+    for (int i = 0; i < BOARD_DIM; ++i) {
+        fprintf(f, "[");
+        for (int j = 0; j < BOARD_DIM; ++j) {
+            char s = hg_cell_symbol(hg, i, j);
+            fprintf(f, "\"%c\"%s", s, (j < BOARD_DIM - 1) ? "," : "");
+        }
+        fprintf(f, "]%s", (i < BOARD_DIM - 1) ? "," : "");
+    }
+    fprintf(f, "]}\n");
+    fclose(f);
+}
+
 int main() {
 	struct hex_game hg;
 
@@ -163,9 +195,7 @@ int main() {
 			player = 1 - player;
 		}
 
-		if (hg.number_of_open_positions >= 75) {
-			printf("\nPlayer %d wins!\n\n", winner);
-			hg_print(&hg);
-		}
+		// Append to dataset file
+		hg_append_game_json(&hg, winner, "../data/games.jsonl");
 	}
 }
