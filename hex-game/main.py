@@ -1,6 +1,10 @@
 from GraphTsetlinMachine.graphs import Graphs
 import argparse
 import numpy as np
+import json
+from pathlib import Path
+from time import time
+from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
 
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
@@ -30,7 +34,7 @@ args = default_args()
 
 def initialize_hex_game(board_size):
     node_names = [f'{i}:{j}' for i in range(1, board_size+1) for j in range(1, board_size+1)]
-    symbols = ['White', 'Black', 'Empty']
+    symbols = ['X', 'O', '.']
     number_of_nodes = board_size * board_size
     return number_of_nodes, node_names, symbols
 
@@ -42,6 +46,26 @@ number_of_nodes, node_names, symbols = initialize_hex_game(BOARD_SIZE);
 print(node_names)
 print(symbols)
 print(number_of_nodes)
+
+def load_games_jsonl(path: Path, limit: int | None = None):
+    games = []
+    if not path.exists():
+        return games
+    with path.open('r', encoding='utf-8') as f:
+        for idx, line in enumerate(f):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                board = obj.get('board')
+                winner = int(obj.get('winner'))
+                games.append((board, winner))
+            except Exception:
+                continue
+            if limit is not None and len(games) >= limit:
+                break
+    return games
 
 graphs_train = Graphs(
     args.number_of_examples,
@@ -72,19 +96,74 @@ for graph_id in range(args.number_of_examples):
                 graphs_train.add_graph_node_edge(graph_id, node_name, neighbor_node_name, edge_type)
 
 Y_train = np.empty(args.number_of_examples, dtype=np.uint32)
+
+dataset_file = Path(__file__).parent / 'data' / 'games.jsonl'
+games = load_games_jsonl(dataset_file)
+
 for graph_id in range(args.number_of_examples):
-    x1 = random.choice(['A', 'B'])
-    x2 = random.choice(['A', 'B'])
- 
-    graphs_train.add_graph_node_property(graph_id, 'Node 1', x1)
-    graphs_train.add_graph_node_property(graph_id, 'Node 2', x2)
-
-    if x1 == x2:
-        Y_train[graph_id] = 0
+    if not games:
+        raise Exception('No games found')
     else:
-        Y_train[graph_id] = 1
+        board, winner = games[graph_id % len(games)]
 
-    if np.random.rand() <= args.noise:
-        Y_train[graph_id] = 1 - Y_train[graph_id]
+    for node_name in node_names:
+        i_str, j_str = node_name.split(':')
+        i = int(i_str) - 1
+        j = int(j_str) - 1
+        graphs_train.add_graph_node_property(graph_id, node_name, board[i][j])
 
-graphs_train.encode()
+    Y_train[graph_id] = np.uint32(winner)
+
+graphs_train.encode() 
+
+
+tm = MultiClassGraphTsetlinMachine(
+    args.number_of_clauses,
+    args.T,
+    args.s,
+    number_of_state_bits = args.number_of_state_bits,
+    depth = args.depth,
+    message_size = args.message_size,
+    message_bits = args.message_bits,
+    max_included_literals = args.max_included_literals,
+    double_hashing = args.double_hashing,
+    one_hot_encoding = args.one_hot_encoding
+)
+
+for i in range(args.epochs):
+    start_training = time()
+    tm.fit(graphs_train, Y_train, epochs=1, incremental=True)
+    stop_training = time()
+
+    start_testing = time()
+    # result_test = 100*(tm.predict(graphs_test) == Y_test).mean()
+    stop_testing = time()
+
+    result_train = 100*(tm.predict(graphs_train) == Y_train).mean()
+
+    #print("%d %.2f %.2f %.2f %.2f" % (i, result_train, result_test, stop_training-start_training, stop_testing-start_testing))
+    print("%d %.2f %.2f %.2f" % (i, result_train, stop_training-start_training, stop_testing-start_testing))
+
+weights = tm.get_state()[1].reshape(2, -1)
+for i in range(tm.number_of_clauses):
+        print("Clause #%d W:(%d %d)" % (i, weights[0,i], weights[1,i]), end=' ')
+        l = []
+        for k in range(graphs_train.hypervector_size * 2):
+            if tm.ta_action(0, i, k):
+                if k < graphs_train.hypervector_size:
+                    l.append("x%d" % (k))
+                else:
+                    l.append("NOT x%d" % (k - graphs_train.hypervector_size))
+
+        # for k in range(args.message_size * 2):
+        #     if tm.ta_action(1, i, k):
+        #         if k < args.message_size:
+        #             l.append("c%d" % (k))
+        #         else:
+        #             l.append("NOT c%d" % (k - args.message_size))
+
+        print(" AND ".join(l))
+
+#print(graphs_test.hypervectors)
+print(tm.hypervectors)
+#print(graphs_test.edge_type_id)
