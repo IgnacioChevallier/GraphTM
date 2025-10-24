@@ -7,7 +7,7 @@ from time import time
 from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
 
 # CONSTANTS
-BOARD_SIZE = 11
+BOARD_SIZE = 3
 
 '''
 Overall arguments, that influence the final outcome of the GraphTM.
@@ -75,10 +75,11 @@ def load_games_jsonl(path: Path, limit: int | None = None):
                 break
     return games
 
+print("Loading training and test data.")
 dataset_file_train = Path(__file__).parent / 'data' / 'train_games.jsonl'
-games_train = load_games_jsonl(dataset_file_train, args.number_of_graphs_training) # All games for the learning data
+games_train = load_games_jsonl(dataset_file_train, args.number_of_graphs_train) # All games for the learning data
 dataset_file_test = Path(__file__).parent / 'data' / 'test_games.jsonl'
-games_test = load_games_jsonl(dataset_file_test, args.number_of_graphs_testing) # All games for the test data
+games_test = load_games_jsonl(dataset_file_test, args.number_of_graphs_test) # All games for the test data
 
 '''
 Initializiation
@@ -87,8 +88,8 @@ Initializiation
 Creating the graphs for training
 '''
 graphs_train = Graphs(
-    args.number_of_examples,
-    node_names=node_names,
+    args.number_of_graphs_train,
+    #node_names=node_names,
     symbols=args.symbols,
     hypervector_size=args.hypervector_size,
     hypervector_bits=args.hypervector_bits,
@@ -98,8 +99,8 @@ graphs_train = Graphs(
 Creating the graphs for testing
 '''
 graphs_test = Graphs(
-    args.number_of_examples,
-    node_names=node_names,
+    args.number_of_graphs_test,
+    #node_names=node_names,
     symbols=args.symbols,
     hypervector_size=args.hypervector_size,
     hypervector_bits=args.hypervector_bits,
@@ -116,6 +117,12 @@ def create_graphs_nodes(graphs, number_of_graphs, number_of_nodes):
     
     graphs.prepare_node_configuration()
 
+    for graph_id in range(number_of_graphs):
+        number_of_outgoing_edges = number_of_nodes - 1
+        for node_name in node_names:
+            graphs.add_graph_node(graph_id, node_name, number_of_outgoing_edges)
+
+print("Creating graph nodes.")
 create_graphs_nodes(graphs_train, args.number_of_graphs_train, number_of_nodes)
 create_graphs_nodes(graphs_train, args.number_of_graphs_test, number_of_nodes)
 
@@ -129,11 +136,6 @@ IDEA:   It might be a bit two complex with bigger board sizes,
         so better use a edges inside a window size arround the node.
 '''
 def create_graphs_edges(graphs, number_of_graphs, number_of_nodes):
-    for graph_id in range(number_of_graphs):
-        number_of_outgoing_edges = number_of_nodes - 1
-        for node_name in node_names:
-            graphs.add_graph_node(graph_id, node_name, number_of_outgoing_edges)
-
     graphs.prepare_edge_configuration()
 
     for graph_id in range(number_of_graphs):
@@ -146,6 +148,7 @@ def create_graphs_edges(graphs, number_of_graphs, number_of_nodes):
                 if node_name != neighbor_node_name:
                     graphs.add_graph_node_edge(graph_id, node_name, neighbor_node_name, edge_type)
 
+print("Creating graph edges.")
 create_graphs_edges(graphs_train, args.number_of_graphs_train, number_of_nodes)
 create_graphs_edges(graphs_train, args.number_of_graphs_test, number_of_nodes)
 
@@ -175,6 +178,7 @@ def fill_graphs(graphs, number_of_graphs, games, Y_data):
 
     graphs.encode()
 
+print("Fill the graphs.")
 fill_graphs(graphs_train, args.number_of_graphs_train, games_train, Y_train)
 fill_graphs(graphs_test, args.number_of_graphs_test, games_test, Y_test)
 
@@ -210,7 +214,6 @@ for i in range(args.epochs):
     result_train = 100*(tm.predict(graphs_train) == Y_train).mean()
     
     print("%.2f %.2f %.2f %.2f" % (result_train, result_test, stop_training-start_training, stop_testing-start_testing))
-
 '''
 QUESTION: Does the rest do anything usefull?
 '''
