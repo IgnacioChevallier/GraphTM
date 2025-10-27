@@ -9,6 +9,7 @@ This project implements the Graph Tsetlin Machine.
 ## Contents
 
 - [Features](#features)
+- [Server connection]
 - [Installation](#installation)
 - [Tutorial](#tutorial)
   - [Initialization](#initialization)
@@ -41,8 +42,9 @@ This project implements the Graph Tsetlin Machine.
 - Rewritten faster CUDA kernels 
 
 ## Server connecting
-Basicly two options fe.uia.no , a jupiter notebook. Easy to use just git clone the project, however sucks for programming. 
-Second option is coder.internal.uia.no inside your own vscode, should be far better but a bit harder to setup.
+Basicly two options ```fe.uia.no```, a jupiter notebook. Easy to use just git clone the project, however sucks for programming. 
+
+Second option is ```coder.internal.uia.no``` inside your own vscode, should be far better but a bit harder to setup.
 
 
 ## Installation
