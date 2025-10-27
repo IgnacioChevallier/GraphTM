@@ -40,6 +40,11 @@ This project implements the Graph Tsetlin Machine.
 - Incorporates [Vanilla](https://tsetlinmachine.org/wp-content/uploads/2022/11/Tsetlin_Machine_Book_Chapter_One_Revised.pdf), Multiclass, [Convolutional](https://tsetlinmachine.org/wp-content/uploads/2023/12/Tsetlin_Machine_Book_Chapter_4_Convolution.pdf), and [Coalesced](https://arxiv.org/abs/2108.07594) [Tsetlin Machines](https://tsetlinmachine.org)
 - Rewritten faster CUDA kernels 
 
+## Server connecting
+Basicly two options fe.uia.no , a jupiter notebook. Easy to use just git clone the project, however sucks for programming. 
+Second option is coder.internal.uia.no inside your own vscode, should be far better but a bit harder to setup.
+
+
 ## Installation
 
 ```bash
