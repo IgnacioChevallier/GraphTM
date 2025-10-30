@@ -176,11 +176,13 @@ void hg_append_game_json(struct hex_game *hg, int winner, const char *file_path)
 }
 
 int main() {
-	struct hex_game hg;
+    struct hex_game hg;
+    char output_path[256];
+    snprintf(output_path, sizeof(output_path), "../data/games_%dx%d.jsonl", BOARD_DIM, BOARD_DIM);
 
 	int winner = -1;
 
-	for (int game = 0; game < 10000000; ++game) {
+	for (int game = 0; game < 1000000; ++game) {
 		hg_init(&hg);
 
 		int player = 0;
@@ -195,7 +197,7 @@ int main() {
 			player = 1 - player;
 		}
 
-		// Append to dataset file
-		hg_append_game_json(&hg, winner, "../data/games.jsonl");
+        // Append to dataset file
+        hg_append_game_json(&hg, winner, output_path);
 	}
 }
