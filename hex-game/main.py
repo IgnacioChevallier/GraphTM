@@ -113,7 +113,7 @@ to represent all locations on the board for both.
 '''
 def create_graphs_nodes(graphs, number_of_graphs, number_of_nodes):
     for graph_id in range(number_of_graphs):
-        graphs_train.set_number_of_graph_nodes(graph_id, number_of_nodes)
+        graphs.set_number_of_graph_nodes(graph_id, number_of_nodes)
     
     graphs.prepare_node_configuration()
 
@@ -124,7 +124,7 @@ def create_graphs_nodes(graphs, number_of_graphs, number_of_nodes):
 
 print("Creating graph nodes.")
 create_graphs_nodes(graphs_train, args.number_of_graphs_train, number_of_nodes)
-create_graphs_nodes(graphs_train, args.number_of_graphs_test, number_of_nodes)
+create_graphs_nodes(graphs_test, args.number_of_graphs_test, number_of_nodes)
 
 '''
 Creating edges.
@@ -150,11 +150,11 @@ def create_graphs_edges(graphs, number_of_graphs, number_of_nodes):
 
 print("Creating graph edges.")
 create_graphs_edges(graphs_train, args.number_of_graphs_train, number_of_nodes)
-create_graphs_edges(graphs_train, args.number_of_graphs_test, number_of_nodes)
+create_graphs_edges(graphs_test, args.number_of_graphs_test, number_of_nodes)
 
 
-Y_train = np.empty(args.number_of_examples, dtype=np.uint32)
-Y_test = np.empty(args.number_of_examples, dtype=np.uint32)
+Y_train = np.empty(args.number_of_graphs_train, dtype=np.uint32)
+Y_test = np.empty(args.number_of_graphs_test, dtype=np.uint32)
 
 '''
 Load the learning data games into the different graphs, 
