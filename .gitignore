@@ -8,6 +8,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Data
+hex-game/data/
+hex-game/data/*
+
 # Distribution / packaging
 .Python
 build/
