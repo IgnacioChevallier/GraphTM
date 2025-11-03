@@ -178,7 +178,7 @@ void hg_append_game_json(struct hex_game *hg, int winner, const char *file_path)
 int main() {
     struct hex_game hg;
     char output_path[256];
-    snprintf(output_path, sizeof(output_path), "../data/train/games_%dx%d.jsonl", BOARD_DIM, BOARD_DIM);
+    snprintf(output_path, sizeof(output_path), "../data/test/games_%dx%d.jsonl", BOARD_DIM, BOARD_DIM);
 
 	int winner = -1;
 
