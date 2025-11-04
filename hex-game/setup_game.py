@@ -1,7 +1,5 @@
-from GraphTsetlinMachine.graphs import Graphs
 import json
 from pathlib import Path
-from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
 
 '''
 Create naming sceme for the nodes.

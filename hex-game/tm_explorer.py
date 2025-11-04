@@ -27,7 +27,7 @@ def default_args(**kwargs):
     parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=20000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=2500, type=int) # Number of graphs used for testing
-    parser.add_argument('--save-model', dest='save_model', default=False, action='store_true', help='Save the trained model to disk')
+    parser.add_argument('--save-model', dest='save_model', default=True, action='store_true') # Set to True if want to save model
 
     args = parser.parse_args()
     for key, value in kwargs.items():
@@ -63,25 +63,26 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
         games_test
     )
     results_train, results_test, time_taken = tm_instance.run()
-    print("Training Results:", results_train)
-    print("Testing Results:", results_test)
-    print("Time Taken:", time_taken)
+    
+    # Cast for clean print
+    results_train = [float(x) for x in results_train]
+    results_test = [float(x) for x in results_test]
+
+    print(f"Training Results: {results_train}")
+    print(f"Testing Results:  {results_test}")
+    print(f"Time Taken: {time_taken:.2f} seconds")
     
     # Save the model if requested
     if args.save_model:
-        # Get best test accuracy as integer
-        final_accuracy = int(round(max(results_test)))
+        final_accuracy = int(round(results_test[-1]))
         
-        # Format date as day_month_hour
         now = datetime.now()
         date_str = f"{now.day}_{now.month}_{now.hour}"
         
-        # Create filename: tm_model_acc_{accuracy}_{day}_{month}_{hour}.pkl
         model_dir = Path(__file__).parent / "models"
         model_dir.mkdir(exist_ok=True)
-        save_path = model_dir / f"tm_model_acc_{final_accuracy}_{date_str}.pkl"
+        save_path = model_dir / f"tm_model_acc_{final_accuracy}_date_{date_str}.pkl"
         
-        print(f"Saving model to {save_path}")
         tm_instance.tm.save(str(save_path))
         print(f"Model saved successfully!")
 
