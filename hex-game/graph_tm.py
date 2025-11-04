@@ -115,7 +115,7 @@ class graph_tm:
     Build the Tsetlin Machine with the given parameters.
     '''
     def build_tm(self):
-        self.tm = MultiClassGraphTsetlinMachine(
+        tm = MultiClassGraphTsetlinMachine(
             number_of_clauses = self.args.number_of_clauses,
             T = self.args.T,
             s = self.args.s,
@@ -127,6 +127,7 @@ class graph_tm:
             double_hashing = self.args.double_hashing,
             one_hot_encoding = self.args.one_hot_encoding
         )
+        return tm
 
     '''
     Running the full process of creating, training and testing the Graph Tsetlin Machine
