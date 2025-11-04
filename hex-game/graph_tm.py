@@ -115,7 +115,7 @@ class graph_tm:
     Build the Tsetlin Machine with the given parameters.
     '''
     def build_tm(self):
-        tm = MultiClassGraphTsetlinMachine(
+        self.tm = MultiClassGraphTsetlinMachine(
             number_of_clauses = self.args.number_of_clauses,
             T = self.args.T,
             s = self.args.s,
