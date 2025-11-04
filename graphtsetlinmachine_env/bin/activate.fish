@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /home/ignacio/Proyects/2025/GraphTsetlinMachine/graphtsetlinmachine_env
+set -gx VIRTUAL_ENV /home/coder/Coding/GraphTM/graphtsetlinmachine_env
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

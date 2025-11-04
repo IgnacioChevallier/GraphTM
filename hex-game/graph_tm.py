@@ -1,8 +1,5 @@
 from GraphTsetlinMachine.graphs import Graphs
-import argparse
 import numpy as np
-import json
-from pathlib import Path
 from time import time
 from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
 
@@ -187,7 +184,7 @@ class graph_tm:
             result_train = 100*(self.tm.predict(self.graphs_train) == self.Y_train).mean()
             results_train.append(result_train)
 
-            #print("%.2f %.2f %.2f %.2f" % (result_train, result_test, stop_training-start_training, stop_testing-start_testing))
+            print(f"[Epoch {i:03d}]  Training Accuracy: {result_train:.2f}  |  Test Accuracy: {result_test:.2f}")
         stop_time = time()
         time_taken = stop_time - start_time
         return results_train, results_test, time_taken
