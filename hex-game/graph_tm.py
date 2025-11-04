@@ -191,4 +191,3 @@ class graph_tm:
         time_taken = stop_time - start_time
         return results_train, results_test, time_taken
 
-    train_and_test()

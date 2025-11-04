@@ -48,6 +48,9 @@ def calculate_exploration_parameters(args):
 def explore_tms(number_of_nodes, node_names, games_train, games_test):
     pass
 
+'''
+Single run of the Graph Tsetlin Machine with given parameters.
+'''
 def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
     tm_instance = graph_tm.graph_tm(
         args,
@@ -57,11 +60,13 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
         games_test
     )
     results_train, results_test, time_taken = tm_instance.run()
-    # Process the results as needed
     print("Training Results:", results_train)
     print("Testing Results:", results_test)
     print("Time Taken:", time_taken)
 
+'''
+Main Function to start either single run or exploration.
+'''
 def main(single_run: bool = True, BOARD_SIZE: int = 3):
     number_of_nodes, node_names, games_train, games_test = setup_game.setup_game(default_args(), BOARD_SIZE)
     if single_run:
