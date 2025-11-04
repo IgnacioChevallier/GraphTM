@@ -9,7 +9,7 @@ Overall arguments, that influence the final outcome of the GraphTM.
 '''
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", default=2, type=int) # Total number of times the model will iterate over the entire training dataset
+    parser.add_argument("--epochs", default=100, type=int) # Total number of times the model will iterate over the entire training dataset
     parser.add_argument("--number-of-clauses", default=20000, type=int) # Higher number = More complexity in the learned patters
     parser.add_argument("--T", default=25000, type=int) # Threshold for votes a clause needs
     parser.add_argument("--s", default=10.0, type=float) # Theshold to include literals
@@ -27,7 +27,7 @@ def default_args(**kwargs):
     parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=20000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=2500, type=int) # Number of graphs used for testing
-    parser.add_argument('--save-model', dest='save_model', default=True, action='store_true') # Set to True if want to save model
+    parser.add_argument('--save-model', dest='save_model', default=False, action='store_true') # Set to True if want to save model
 
     args = parser.parse_args()
     for key, value in kwargs.items():
