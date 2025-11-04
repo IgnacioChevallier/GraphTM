@@ -154,11 +154,11 @@ class graph_tm:
         '''
         Filling the graphs with the board game data.
         '''
-        Y_train = np.empty(self.args.number_of_graphs_train, dtype=np.uint32)
-        Y_test = np.empty(self.args.number_of_graphs_test, dtype=np.uint32)
+        self.Y_train = np.empty(self.args.number_of_graphs_train, dtype=np.uint32)
+        self.Y_test = np.empty(self.args.number_of_graphs_test, dtype=np.uint32)
 
-        self.fill_graphs(self.graphs_train, self.args.number_of_graphs_train, self.games_train, Y_train)
-        self.fill_graphs(self.graphs_test, self.args.number_of_graphs_test, self.games_test, Y_test)
+        self.fill_graphs(self.graphs_train, self.args.number_of_graphs_train, self.games_train, self.Y_train)
+        self.fill_graphs(self.graphs_test, self.args.number_of_graphs_test, self.games_test, self.Y_test)
 
         '''
         Creating the Tsetlin Machine.
