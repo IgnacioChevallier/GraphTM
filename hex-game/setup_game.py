@@ -1,9 +1,6 @@
 from GraphTsetlinMachine.graphs import Graphs
-import argparse
-import numpy as np
 import json
 from pathlib import Path
-from time import time
 from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
 
 '''
@@ -14,8 +11,6 @@ def initialize_hex_game(board_size):
     node_names = [f'{i}:{j}' for i in range(1, board_size+1) for j in range(1, board_size+1)]
     number_of_nodes = board_size * board_size
     return number_of_nodes, node_names
-
-
 
 '''
 Load the prepared board games from the json.
@@ -39,7 +34,6 @@ def load_games_jsonl(path: Path, limit: int | None = None):
             if limit is not None and len(games) >= limit:
                 break
     return games
-
 
 def setup_game(args, BOARD_SIZE):
     print("Setting up the Hex game environment and loading data.")

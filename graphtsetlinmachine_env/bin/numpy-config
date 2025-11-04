@@ -1,4 +1,4 @@
-#!/home/ignacio/Proyects/2025/GraphTsetlinMachine/graphtsetlinmachine_env/bin/python3
+#!/home/coder/Coding/GraphTM/graphtsetlinmachine_env/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

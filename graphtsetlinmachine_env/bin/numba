@@ -1,4 +1,4 @@
-#!/home/ignacio/Proyects/2025/GraphTsetlinMachine/graphtsetlinmachine_env/bin/python3
+#!/home/coder/Coding/GraphTM/graphtsetlinmachine_env/bin/python3
 # -*- coding: UTF-8 -*-
 from __future__ import print_function, division, absolute_import
 
