@@ -9,7 +9,7 @@ Overall arguments, that influence the final outcome of the GraphTM.
 '''
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", default=100, type=int) # Total number of times the model will iterate over the entire training dataset
+    parser.add_argument("--epochs", default=2, type=int) # Total number of times the model will iterate over the entire training dataset
     parser.add_argument("--number-of-clauses", default=20000, type=int) # Higher number = More complexity in the learned patters
     parser.add_argument("--T", default=25000, type=int) # Threshold for votes a clause needs
     parser.add_argument("--s", default=10.0, type=float) # Theshold to include literals
@@ -27,7 +27,6 @@ def default_args(**kwargs):
     parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=20000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=2500, type=int) # Number of graphs used for testing
-    parser.add_argument("--save-model", default="", type=str, help="Path to save the trained model. If empty, model is not saved. If 'auto', generates a timestamped filename.")
 
     args = parser.parse_args()
     for key, value in kwargs.items():
@@ -67,21 +66,13 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
     print("Testing Results:", results_test)
     print("Time Taken:", time_taken)
     
-    # Save the model if requested
-    if args.save_model:
-        if args.save_model == "auto":
-            # Generate timestamped filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            model_dir = Path(__file__).parent / "models"
-            model_dir.mkdir(exist_ok=True)
-            save_path = model_dir / f"tm_model_{timestamp}.pkl"
-        else:
-            save_path = Path(args.save_model)
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        print(f"Saving model to {save_path}")
-        tm_instance.tm.save(str(save_path))
-        print(f"Model saved successfully!")
+    # Save the model
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_dir = Path(__file__).parent / "models"
+    model_dir.mkdir(exist_ok=True)
+    save_path = model_dir / f"tm_model_{timestamp}.pkl"
+    tm_instance.tm.save(str(save_path))
+    print(f"Model saved successfully!")
 
 '''
 Main Function to start either single run or exploration.
