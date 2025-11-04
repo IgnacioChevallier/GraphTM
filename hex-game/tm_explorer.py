@@ -27,6 +27,7 @@ def default_args(**kwargs):
     parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=20000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=2500, type=int) # Number of graphs used for testing
+    parser.add_argument('--save-model', dest='save_model', default=False, action='store_true', help='Save the trained model to disk')
 
     args = parser.parse_args()
     for key, value in kwargs.items():
@@ -66,13 +67,23 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
     print("Testing Results:", results_test)
     print("Time Taken:", time_taken)
     
-    # Save the model
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_dir = Path(__file__).parent / "models"
-    model_dir.mkdir(exist_ok=True)
-    save_path = model_dir / f"tm_model_{timestamp}.pkl"
-    tm_instance.tm.save(str(save_path))
-    print(f"Model saved successfully!")
+    # Save the model if requested
+    if args.save_model:
+        # Get best test accuracy as integer
+        final_accuracy = int(round(max(results_test)))
+        
+        # Format date as day_month_hour
+        now = datetime.now()
+        date_str = f"{now.day}_{now.month}_{now.hour}"
+        
+        # Create filename: tm_model_acc_{accuracy}_{day}_{month}_{hour}.pkl
+        model_dir = Path(__file__).parent / "models"
+        model_dir.mkdir(exist_ok=True)
+        save_path = model_dir / f"tm_model_acc_{final_accuracy}_{date_str}.pkl"
+        
+        print(f"Saving model to {save_path}")
+        tm_instance.tm.save(str(save_path))
+        print(f"Model saved successfully!")
 
 '''
 Main Function to start either single run or exploration.
