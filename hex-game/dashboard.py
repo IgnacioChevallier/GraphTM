@@ -8,6 +8,11 @@ import re  # Import regular expression module
 from pathlib import Path
 
 '''
+command to run the app:
+streamlit run hex-game/dashboard.py
+'''
+
+'''
 Setting a higher recursion depth for loading complex pickle files
 that might be deeply nested.
 '''
