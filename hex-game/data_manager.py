@@ -5,17 +5,15 @@ import json
 FILE_PATH_EXPLORATION = Path(__file__).parent / 'data' / 'exploration_results'
 
 
+'''
+Save all exploration results to `explorations.json`.
+'''
 def save_exploration_results(results):
-    """Save one or more exploration result dicts into `explorations.json`.
-
-    `results` may be a single dict or a list of dicts. Each dict may contain an
-    `args` value that is an argparse.Namespace; this will be converted to a dict.
-    """
     target_dir = FILE_PATH_EXPLORATION
     target_dir.mkdir(parents=True, exist_ok=True)
     out_path = target_dir / "explorations.json"
 
-    # Normalize to a list of dicts
+
     if isinstance(results, list):
         entries = list(results)
     else:
@@ -26,7 +24,6 @@ def save_exploration_results(results):
         try:
             data = dict(entry)
         except Exception:
-            # If entry isn't dict-like, stringify it
             normalized.append({"value": str(entry), "timestamp": datetime.utcnow().isoformat() + "Z"})
             continue
 

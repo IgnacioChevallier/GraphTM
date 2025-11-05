@@ -35,37 +35,38 @@ def default_args(**kwargs):
             setattr(args, key, value)
     return args
 
+'''
+Based on the current index, generate a new set of exploration parameters.
+Return the updated args.
+'''
 def new_exploration_args(current_index, permutate_exploration_params: bool = True):
-    # Define the exploration options
     exploration_options = {
         "number_of_clauses": [10, 100, 500, 1000, 2000, 5000, 10000, 20000],
         "s": [0.5, 2.0, 5.0, 10.0, 15.0],
         "T": [1000, 5000, 10000, 20000],
         "number_of_state_bits": [4, 6, 8, 10],
         "number_of_graphs_train": [5000, 10000, 20000, 40000],
-        "epochs": [100]
+        "epochs": [50] # for now keeping epochs constant
     }
 
-    # Build all combinations (Cartesian product) in a stable key order
+    '''
+    Change default arguments to the new explore params.
+    '''
     keys = list(exploration_options.keys())
     all_combinations = list(product(*(exploration_options[k] for k in keys)))
 
     if permutate_exploration_params:
-        # Deterministic shuffle based on current_index so runs are reproducible
         rnd = random.Random(current_index)
         rnd.shuffle(all_combinations)
 
     if not all_combinations:
         raise ValueError("No exploration parameters available.")
 
-    # Wrap index to available combinations
     idx = current_index % len(all_combinations)
     chosen_combo = all_combinations[idx]
 
-    # Map back to dict of argument overrides (matches argparse attribute names)
     exploration_params = {k: v for k, v in zip(keys, chosen_combo)}
 
-    # Build an argparse.Namespace with default values and apply the exploration overrides
     args = default_args()
     for key, value in exploration_params.items():
         if key in args.__dict__:
@@ -73,7 +74,10 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
 
     return args
 
-
+'''
+Run multiple explorations of the Graph Tsetlin Machine with different parameters.
+Save the results in "data/exploration_results" after all explorations are done.
+'''
 def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test):
     total_exploration_results = []
     for i in range(total_explorations):
@@ -86,11 +90,11 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
             games_test
         )
         results_train, results_test, time_taken = tm_instance.run()
-        print("Exploration Parameters:", args)
-        print("Training Results:", results_train[-1])
-        print("Testing Results:", results_test[-1])
-        print("Time Taken:", time_taken)
-        # Results to save
+        # print("Exploration Parameters:", args)
+        # print("Training Results:", results_train[-1])
+        # print("Testing Results:", results_test[-1])
+        # print("Time Taken:", time_taken)
+
         results_payload = {
             "args": args,
             "results_train": results_train,
@@ -128,7 +132,7 @@ def main(single_run: bool = True, BOARD_SIZE: int = 3):
     if single_run:
         run_single_tm(default_args(), number_of_nodes, node_names, games_train, games_test)
     else:
-        explore_tms(random.randint(0,10**10), 20, number_of_nodes, node_names, games_train, games_test)
+        explore_tms(random.randint(0,10**10), 50, number_of_nodes, node_names, games_train, games_test)
 
 if __name__ == "__main__":
     main()
