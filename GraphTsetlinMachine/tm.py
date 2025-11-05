@@ -469,7 +469,7 @@ class CommonTsetlinMachine():
 			self.message_bits,
 		)
 
-		mod_prepare = SourceModule(parameters + kernels.code_header + kernels.code_prepare, no_extern_c=True, options=["-Wno-deprecated-gpu-targets"])
+		mod_prepare = SourceModule(parameters + kernels.code_header + kernels.code_prepare, no_extern_c=True)
 		self.prepare = mod_prepare.get_function("prepare")
 		self.prepare_message_ta_state = mod_prepare.get_function("prepare_message_ta_state")
 
@@ -480,7 +480,7 @@ class CommonTsetlinMachine():
 		self.update_message = mod_update.get_function("update_message")
 		self.update_message.prepare("PfPiPPPP")
 
-		mod_evaluate = SourceModule(parameters + kernels.code_header + kernels.code_evaluate, no_extern_c=True, options=["-Wno-deprecated-gpu-targets"])
+		mod_evaluate = SourceModule(parameters + kernels.code_header + kernels.code_evaluate, no_extern_c=True)
 		self.evaluate = mod_evaluate.get_function("evaluate")
 		self.evaluate.prepare("PPiP")
 
@@ -505,14 +505,14 @@ class CommonTsetlinMachine():
 		self.encode_messages = mod_evaluate.get_function("encode_messages")
 		self.encode_messages.prepare("iPP")
 
-		mod_transform = SourceModule(parameters + kernels.code_header + kernels.code_transform, no_extern_c=True, options=["-Wno-deprecated-gpu-targets"])
+		mod_transform = SourceModule(parameters + kernels.code_header + kernels.code_transform, no_extern_c=True)
 		self.transform_gpu = mod_transform.get_function("transform")
 		self.transform_gpu.prepare("PiP")
 
 		self.transform_nodewise_gpu = mod_transform.get_function("transform_nodewise")
 		self.transform_nodewise_gpu.prepare("PiP")
 
-		mod_clauses = SourceModule(parameters + kernels.code_header + kernels.code_clauses, no_extern_c=True, options=["-Wno-deprecated-gpu-targets"])
+		mod_clauses = SourceModule(parameters + kernels.code_header + kernels.code_clauses, no_extern_c=True)
 		self.get_ta_states_gpu = mod_clauses.get_function("get_ta_states")
 		self.get_ta_states_gpu.prepare("PiiP")
 		self.get_hyperliterals_gpu = mod_clauses.get_function("get_hyperliterals")

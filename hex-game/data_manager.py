@@ -6,22 +6,42 @@ FILE_PATH_EXPLORATION = Path(__file__).parent / 'data' / 'exploration_results'
 
 
 def save_exploration_results(results):
+    """Save one or more exploration result dicts into `explorations.json`.
+
+    `results` may be a single dict or a list of dicts. Each dict may contain an
+    `args` value that is an argparse.Namespace; this will be converted to a dict.
+    """
     target_dir = FILE_PATH_EXPLORATION
     target_dir.mkdir(parents=True, exist_ok=True)
-    out_path = target_dir / f"explorations.json"
+    out_path = target_dir / "explorations.json"
 
-    # normalize result to a plain dict
-    data = dict(results)
-    if "args" in data:
+    # Normalize to a list of dicts
+    if isinstance(results, list):
+        entries = list(results)
+    else:
+        entries = [results]
+
+    normalized = []
+    for entry in entries:
         try:
-            args = data["args"]
-            if hasattr(args, "__dict__") or hasattr(args, "__slots__"):
-                data["args"] = vars(args)
+            data = dict(entry)
         except Exception:
-            pass
+            # If entry isn't dict-like, stringify it
+            normalized.append({"value": str(entry), "timestamp": datetime.utcnow().isoformat() + "Z"})
+            continue
 
-    data.setdefault("timestamp", datetime.utcnow().isoformat() + "Z")
+        if "args" in data:
+            try:
+                args = data["args"]
+                if hasattr(args, "__dict__") or hasattr(args, "__slots__"):
+                    data["args"] = vars(args)
+            except Exception:
+                pass
 
+        data.setdefault("timestamp", datetime.utcnow().isoformat() + "Z")
+        normalized.append(data)
+
+    # Load existing file (list) if present
     existing = []
     if out_path.exists():
         try:
@@ -32,7 +52,7 @@ def save_exploration_results(results):
         except Exception:
             existing = []
 
-    existing.append(data)
+    existing.extend(normalized)
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(existing, fh, ensure_ascii=False, indent=2, default=str)
 
