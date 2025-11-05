@@ -74,6 +74,7 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
 
 
 def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test):
+    total_exploration_results = []
     for i in range(total_explorations):
         args = new_exploration_args(starting_exploration_index + i)
         tm_instance = graph_tm.graph_tm(
@@ -96,8 +97,10 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
             "time_taken": time_taken,
             "exploration_index": i,
         }
-        out_path = data_manager.save_exploration_results(None, results_payload)
-        print(f"Saved exploration results to: {out_path}")
+
+        total_exploration_results.append(results_payload)
+
+    data_manager.save_exploration_results(total_exploration_results)
 
 
 '''

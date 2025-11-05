@@ -1,29 +1,50 @@
-import pickle
 from pathlib import Path
-import random
+from datetime import datetime
+import json
 
 FILE_PATH_EXPLORATION = Path(__file__).parent / 'data' / 'exploration_results'
 
 
-def save_exploration_results(file_path: Path | None, results: dict):
-    target_dir = Path(file_path) if file_path is not None else FILE_PATH_EXPLORATION
+def save_exploration_results(results):
+    target_dir = FILE_PATH_EXPLORATION
     target_dir.mkdir(parents=True, exist_ok=True)
+    out_path = target_dir / f"explorations.json"
 
-    # Random name to avoid overwriting
-    out_path = target_dir / f"explored_tm_{random.randint(0,10**10)}.pkl"
-
-    # args to dict
-    data_to_save = dict(results)
-    if "args" in data_to_save:
+    # normalize result to a plain dict
+    data = dict(results)
+    if "args" in data:
         try:
-            data_to_save["args"] = vars(data_to_save["args"]) if hasattr(data_to_save["args"], "__dict__") or hasattr(data_to_save["args"], "__slots__") else data_to_save["args"]
+            args = data["args"]
+            if hasattr(args, "__dict__") or hasattr(args, "__slots__"):
+                data["args"] = vars(args)
         except Exception:
             pass
 
-    # Add timestamp
-    from datetime import datetime
-    data_to_save.setdefault("timestamp", datetime.utcnow().isoformat() + "Z")
+    data.setdefault("timestamp", datetime.utcnow().isoformat() + "Z")
 
-    with open(out_path, "wb") as fh:
-        pickle.dump(data_to_save, fh)
+    existing = []
+    if out_path.exists():
+        try:
+            with open(out_path, "r", encoding="utf-8") as fh:
+                existing = json.load(fh)
+                if not isinstance(existing, list):
+                    existing = [existing]
+        except Exception:
+            existing = []
 
+    existing.append(data)
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump(existing, fh, ensure_ascii=False, indent=2, default=str)
+
+
+def load_exploration_results():
+    path = FILE_PATH_EXPLORATION / "explorations.json"
+    if not path.exists():
+        return []
+    with open(path, "r", encoding="utf-8") as fh:
+        try:
+            data = json.load(fh)
+            return data
+        except Exception:
+            return []
+        
