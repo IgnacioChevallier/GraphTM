@@ -1,4 +1,3 @@
-import graph_tm
 import setup_game
 import argparse
 from itertools import product
@@ -77,11 +76,31 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
 
 import concurrent.futures
 
+import tempfile
+
+
+def _pycuda_init_worker():
+    """Initializer run once in each worker process to set a unique
+    PYCUDA cache directory so parallel compilation doesn't corrupt a shared cache.
+    """
+    try:
+        pid = os.getpid()
+        cache_dir = tempfile.mkdtemp(prefix=f"pycuda_cache_{pid}_")
+        # Set before any pycuda usage in this process
+        os.environ["PYCUDA_CACHE_DIR"] = cache_dir
+    except Exception:
+        # Best-effort; if this fails, worker will proceed with default cache
+        pass
+
 def _explore_worker(exploration_index, starting_exploration_index, number_of_nodes, node_names, games_train, games_test):
     # compute global index used to deterministically pick params
     global_index = starting_exploration_index + exploration_index
     args = new_exploration_args(global_index)
     try:
+        # Import graph_tm here so the PYCUDA_CACHE_DIR set by the worker initializer
+        # is visible when any pycuda/GraphTsetlinMachine compilation happens.
+        import graph_tm
+
         tm_instance = graph_tm.graph_tm(
             args,
             number_of_nodes,
@@ -120,10 +139,15 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
             cpu = 1
         max_workers = min(total_explorations, cpu)
 
-    Executor = concurrent.futures.ProcessPoolExecutor if use_processes else concurrent.futures.ThreadPoolExecutor
+    if use_processes:
+        Executor = concurrent.futures.ProcessPoolExecutor
+        executor_kwargs = {"max_workers": max_workers, "initializer": _pycuda_init_worker}
+    else:
+        Executor = concurrent.futures.ThreadPoolExecutor
+        executor_kwargs = {"max_workers": max_workers}
 
     # submit all tasks
-    with Executor(max_workers=max_workers) as ex:
+    with Executor(**executor_kwargs) as ex:
         futures = [
             ex.submit(
                 _explore_worker,
@@ -155,6 +179,9 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
 Single run of the Graph Tsetlin Machine with given parameters.
 '''
 def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
+    # import here to avoid triggering pycuda compilation before any worker initializer
+    import graph_tm
+
     tm_instance = graph_tm.graph_tm(
         args,
         number_of_nodes,
