@@ -42,6 +42,7 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
         "s": [0.5, 2.0, 5.0, 10.0, 15.0],
         "T": [1000, 5000, 10000, 20000],
         "number_of_state_bits": [4, 6, 8, 10],
+        "number_of_graphs_train": [5000, 10000, 20000, 40000],
         "epochs": [100]
     }
 
