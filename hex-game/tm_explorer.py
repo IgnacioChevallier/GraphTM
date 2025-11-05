@@ -3,6 +3,7 @@ import setup_game
 import argparse
 from itertools import product
 import random
+import data_manager
 
 '''
 Overall arguments, that influence the final outcome of the GraphTM.
@@ -72,9 +73,32 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
     return args
 
 
-def explore_tms(number_of_nodes, node_names, games_train, games_test):
+def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test):
+    for i in range(total_explorations):
+        args = new_exploration_args(starting_exploration_index + i)
+        tm_instance = graph_tm.graph_tm(
+            args,
+            number_of_nodes,
+            node_names,
+            games_train,
+            games_test
+        )
+        results_train, results_test, time_taken = tm_instance.run()
+        print("Exploration Parameters:", args)
+        print("Training Results:", results_train[-1])
+        print("Testing Results:", results_test[-1])
+        print("Time Taken:", time_taken)
+        # Results to save
+        results_payload = {
+            "args": args,
+            "results_train": results_train,
+            "results_test": results_test,
+            "time_taken": time_taken,
+            "exploration_index": i,
+        }
+        out_path = data_manager.save_exploration_results(None, results_payload)
+        print(f"Saved exploration results to: {out_path}")
 
-    pass
 
 '''
 Single run of the Graph Tsetlin Machine with given parameters.
@@ -100,7 +124,7 @@ def main(single_run: bool = True, BOARD_SIZE: int = 3):
     if single_run:
         run_single_tm(default_args(), number_of_nodes, node_names, games_train, games_test)
     else:
-        explore_tms(number_of_nodes, node_names, games_train, games_test)
+        explore_tms(random.randint(0,10**10), 20, number_of_nodes, node_names, games_train, games_test)
 
 if __name__ == "__main__":
     main()
