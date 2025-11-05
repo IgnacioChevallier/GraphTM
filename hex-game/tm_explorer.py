@@ -1,8 +1,9 @@
 import graph_tm
 import setup_game
 import argparse
-from pathlib import Path
-from datetime import datetime
+from itertools import product
+import random
+import data_manager
 
 '''
 Overall arguments, that influence the final outcome of the GraphTM.
@@ -27,7 +28,6 @@ def default_args(**kwargs):
     parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=20000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=2500, type=int) # Number of graphs used for testing
-    parser.add_argument('--save-model', dest='save_model', default=False, action='store_true') # Set to True if want to save model
 
     args = parser.parse_args()
     for key, value in kwargs.items():
@@ -35,21 +35,78 @@ def default_args(**kwargs):
             setattr(args, key, value)
     return args
 
-def calculate_exploration_parameters(args):
-    exploration_params = []
-    for clauses in args.explore_number_of_clauses:
-        for s in args.explore_s:
-            for T in args.explore_T:
-                param_set = {
-                    'number_of_clauses': clauses,
-                    's': s,
-                    'T': T
-                }
-                exploration_params.append(param_set)
-    return exploration_params
+'''
+Based on the current index, generate a new set of exploration parameters.
+Return the updated args.
+'''
+def new_exploration_args(current_index, permutate_exploration_params: bool = True):
+    exploration_options = {
+        "number_of_clauses": [10, 100, 500, 1000, 2000, 5000, 10000, 20000],
+        "s": [0.5, 2.0, 5.0, 10.0, 15.0],
+        "T": [1000, 5000, 10000, 20000],
+        "number_of_state_bits": [4, 6, 8, 10],
+        "number_of_graphs_train": [5000, 10000, 20000, 40000],
+        "epochs": [50] # for now keeping epochs constant
+    }
 
-def explore_tms(number_of_nodes, node_names, games_train, games_test):
-    pass
+    '''
+    Change default arguments to the new explore params.
+    '''
+    keys = list(exploration_options.keys())
+    all_combinations = list(product(*(exploration_options[k] for k in keys)))
+
+    if permutate_exploration_params:
+        rnd = random.Random(current_index)
+        rnd.shuffle(all_combinations)
+
+    if not all_combinations:
+        raise ValueError("No exploration parameters available.")
+
+    idx = current_index % len(all_combinations)
+    chosen_combo = all_combinations[idx]
+
+    exploration_params = {k: v for k, v in zip(keys, chosen_combo)}
+
+    args = default_args()
+    for key, value in exploration_params.items():
+        if key in args.__dict__:
+            setattr(args, key, value)
+
+    return args
+
+'''
+Run multiple explorations of the Graph Tsetlin Machine with different parameters.
+Save the results in "data/exploration_results" after all explorations are done.
+'''
+def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test):
+    total_exploration_results = []
+    for i in range(total_explorations):
+        args = new_exploration_args(starting_exploration_index + i)
+        tm_instance = graph_tm.graph_tm(
+            args,
+            number_of_nodes,
+            node_names,
+            games_train,
+            games_test
+        )
+        results_train, results_test, time_taken = tm_instance.run()
+        # print("Exploration Parameters:", args)
+        # print("Training Results:", results_train[-1])
+        # print("Testing Results:", results_test[-1])
+        # print("Time Taken:", time_taken)
+
+        results_payload = {
+            "args": args,
+            "results_train": results_train,
+            "results_test": results_test,
+            "time_taken": time_taken,
+            "exploration_index": i,
+        }
+
+        total_exploration_results.append(results_payload)
+
+    data_manager.save_exploration_results(total_exploration_results)
+
 
 '''
 Single run of the Graph Tsetlin Machine with given parameters.
@@ -63,28 +120,9 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
         games_test
     )
     results_train, results_test, time_taken = tm_instance.run()
-    
-    # Cast for clean print
-    results_train = [float(x) for x in results_train]
-    results_test = [float(x) for x in results_test]
-
-    print(f"Training Results: {results_train}")
-    print(f"Testing Results:  {results_test}")
-    print(f"Time Taken: {time_taken:.2f} seconds")
-    
-    # Save the model if requested
-    if args.save_model:
-        final_accuracy = int(round(results_test[-1]))
-        
-        now = datetime.now()
-        date_str = f"{now.day}_{now.month}_{now.hour}"
-        
-        model_dir = Path(__file__).parent / "models"
-        model_dir.mkdir(exist_ok=True)
-        save_path = model_dir / f"tm_model_acc_{final_accuracy}_date_{date_str}.pkl"
-        
-        tm_instance.tm.save(str(save_path))
-        print(f"Model saved successfully!")
+    print("Training Results:", results_train[-1])
+    print("Testing Results:", results_test[-1])
+    print("Time Taken:", time_taken)
 
 '''
 Main Function to start either single run or exploration.
@@ -94,7 +132,7 @@ def main(single_run: bool = True, BOARD_SIZE: int = 3):
     if single_run:
         run_single_tm(default_args(), number_of_nodes, node_names, games_train, games_test)
     else:
-        explore_tms(number_of_nodes, node_names, games_train, games_test)
+        explore_tms(random.randint(0,10**10), 50, number_of_nodes, node_names, games_train, games_test)
 
 if __name__ == "__main__":
     main()
