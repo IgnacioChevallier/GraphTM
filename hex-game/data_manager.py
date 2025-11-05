@@ -26,3 +26,4 @@ def save_exploration_results(file_path: Path | None, results: dict):
 
     with open(out_path, "wb") as fh:
         pickle.dump(data_to_save, fh)
+

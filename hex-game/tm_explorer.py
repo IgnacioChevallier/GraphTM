@@ -4,6 +4,8 @@ import argparse
 from itertools import product
 import random
 import data_manager
+import os
+import traceback
 
 '''
 Overall arguments, that influence the final outcome of the GraphTM.
@@ -73,9 +75,13 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
     return args
 
 
-def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test):
-    for i in range(total_explorations):
-        args = new_exploration_args(starting_exploration_index + i)
+import concurrent.futures
+
+def _explore_worker(exploration_index, starting_exploration_index, number_of_nodes, node_names, games_train, games_test):
+    # compute global index used to deterministically pick params
+    global_index = starting_exploration_index + exploration_index
+    args = new_exploration_args(global_index)
+    try:
         tm_instance = graph_tm.graph_tm(
             args,
             number_of_nodes,
@@ -84,20 +90,65 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
             games_test
         )
         results_train, results_test, time_taken = tm_instance.run()
-        print("Exploration Parameters:", args)
-        print("Training Results:", results_train[-1])
-        print("Testing Results:", results_test[-1])
-        print("Time Taken:", time_taken)
-        # Results to save
         results_payload = {
             "args": args,
             "results_train": results_train,
             "results_test": results_test,
             "time_taken": time_taken,
-            "exploration_index": i,
+            "exploration_index": exploration_index,
         }
         out_path = data_manager.save_exploration_results(None, results_payload)
-        print(f"Saved exploration results to: {out_path}")
+        return {"status": "ok", "exploration_index": exploration_index, "args": args,
+                "results_train": results_train, "results_test": results_test,
+                "time_taken": time_taken, "out_path": out_path}
+    except Exception:
+        return {"status": "error", "exploration_index": exploration_index, "traceback": traceback.format_exc()}
+
+def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test, max_workers=None, use_processes=True):
+    """
+    Run explorations in parallel.
+    - max_workers: number of parallel workers (defaults to min(total_explorations, cpu_count()))
+    - use_processes: if True use ProcessPoolExecutor (better for CPU-bound); otherwise ThreadPoolExecutor.
+    """
+    if total_explorations <= 0:
+        return
+
+    if max_workers is None:
+        try:
+            cpu = os.cpu_count() or 1
+        except Exception:
+            cpu = 1
+        max_workers = min(total_explorations, cpu)
+
+    Executor = concurrent.futures.ProcessPoolExecutor if use_processes else concurrent.futures.ThreadPoolExecutor
+
+    # submit all tasks
+    with Executor(max_workers=max_workers) as ex:
+        futures = [
+            ex.submit(
+                _explore_worker,
+                i,
+                starting_exploration_index,
+                number_of_nodes,
+                node_names,
+                games_train,
+                games_test
+            )
+            for i in range(total_explorations)
+        ]
+
+        # iterate as results come in
+        for fut in concurrent.futures.as_completed(futures):
+            res = fut.result()
+            if res.get("status") == "ok":
+                print("Exploration Parameters:", res["args"])
+                print("Training Results:", res["results_train"][-1])
+                print("Testing Results:", res["results_test"][-1])
+                print("Time Taken:", res["time_taken"])
+                print(f"Saved exploration results to: {res.get('out_path')}")
+            else:
+                print(f"Exploration {res.get('exploration_index')} failed:")
+                print(res.get("traceback"))
 
 
 '''
