@@ -26,7 +26,7 @@ def default_args(**kwargs):
     parser.add_argument('--one-hot-encoding', dest='one_hot_encoding', default=False, action='store_true')
     
     parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
-    parser.add_argument("--number_of_graphs_train", default=20000, type=int) # Number of graphs used for training
+    parser.add_argument("--number_of_graphs_train", default=1000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=2500, type=int) # Number of graphs used for testing
 
     args = parser.parse_args()
