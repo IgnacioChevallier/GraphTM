@@ -39,8 +39,8 @@ def setup_game(args, BOARD_SIZE):
     number_of_nodes, node_names  = initialize_hex_game(BOARD_SIZE)
 
     dataset_file_train = Path(__file__).parent / 'data' / 'train' / f'games_{BOARD_SIZE}x{BOARD_SIZE}.jsonl'
-    games_train = load_games_jsonl(dataset_file_train, args.number_of_graphs_train) # All games for the learning data
+    games_train = load_games_jsonl(dataset_file_train, args.number_of_graphs_train, 10000) # All games for the learning data
     dataset_file_test = Path(__file__).parent / 'data' / 'test' / f'games_{BOARD_SIZE}x{BOARD_SIZE}.jsonl'
-    games_test = load_games_jsonl(dataset_file_test, args.number_of_graphs_test) # All games for the test data
+    games_test = load_games_jsonl(dataset_file_test, args.number_of_graphs_test, 10000) # All games for the test data
 
     return number_of_nodes, node_names, games_train, games_test

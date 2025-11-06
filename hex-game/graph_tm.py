@@ -122,7 +122,9 @@ class graph_tm:
             message_bits = self.args.message_bits,
             max_included_literals = self.args.max_included_literals,
             double_hashing = self.args.double_hashing,
-            one_hot_encoding = self.args.one_hot_encoding
+            one_hot_encoding = self.args.one_hot_encoding,
+            grid=(16*13,1,1),
+            block=(128,1,1)   
         )
         return tm
 
