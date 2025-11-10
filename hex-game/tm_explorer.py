@@ -10,10 +10,10 @@ Overall arguments, that influence the final outcome of the GraphTM.
 '''
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", default=1, type=int) # Total number of times the model will iterate over the entire training dataset
-    parser.add_argument("--number-of-clauses", default=10, type=int) # Higher number = More complexity in the learned patters
-    parser.add_argument("--T", default=100, type=int) # Threshold for votes a clause needs
-    parser.add_argument("--s", default=1.0, type=float) # Theshold to include literals
+    parser.add_argument("--epochs", default=3, type=int) # Total number of times the model will iterate over the entire training dataset
+    parser.add_argument("--number-of-clauses", default=1000, type=int) # Higher number = More complexity in the learned patters
+    parser.add_argument("--T", default=1000, type=int) # Threshold for votes a clause needs
+    parser.add_argument("--s", default=2.0, type=float) # Theshold to include literals
     parser.add_argument("--number-of-state-bits", default=8, type=int) # Depth 2^8 states
     parser.add_argument("--depth", default=2, type=int) # Message depth btw. nodes
     parser.add_argument("--symbols", nargs="+", default=['X', 'O', '.']) #Graph Symbols: X_Player1, O_Player2, ._Empty
@@ -120,9 +120,11 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
         games_test
     )
     results_train, results_test, time_taken = tm_instance.run()
+    board_size = int(len(node_names) ** 0.5)
     print("Training Results:", results_train[-1])
     print("Testing Results:", results_test[-1])
     print("Time Taken:", time_taken)
+    print(f"Board Size: {board_size} x {board_size}")
     print("Number of clauses:", tm_instance.tm.number_of_clauses)
 
 '''
