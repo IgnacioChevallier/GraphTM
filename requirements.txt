@@ -1,0 +1,9 @@
+# Core scientific computing dependencies
+numpy>=2.3.4
+scipy>=1.16.3
+
+# CUDA support for GPU acceleration
+pycuda>=2025.1.2
+
+# Just-in-time compilation for performance
+numba>=0.62.1
