@@ -10,7 +10,7 @@ Overall arguments, that influence the final outcome of the GraphTM.
 '''
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", default=10, type=int) # Total number of times the model will iterate over the entire training dataset
+    parser.add_argument("--epochs", default=1, type=int) # Total number of times the model will iterate over the entire training dataset
     parser.add_argument("--number-of-clauses", default=10, type=int) # Higher number = More complexity in the learned patters
     parser.add_argument("--T", default=100, type=int) # Threshold for votes a clause needs
     parser.add_argument("--s", default=1.0, type=float) # Theshold to include literals
@@ -26,8 +26,8 @@ def default_args(**kwargs):
     parser.add_argument('--one-hot-encoding', dest='one_hot_encoding', default=False, action='store_true')
     
     parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
-    parser.add_argument("--number_of_graphs_train", default=10000, type=int) # Number of graphs used for training
-    parser.add_argument("--number_of_graphs_test", default=2500, type=int) # Number of graphs used for testing
+    parser.add_argument("--number_of_graphs_train", default=100000, type=int) # Number of graphs used for training
+    parser.add_argument("--number_of_graphs_test", default=100000, type=int) # Number of graphs used for testing
 
     args = parser.parse_args()
     for key, value in kwargs.items():
@@ -123,6 +123,7 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
     print("Training Results:", results_train[-1])
     print("Testing Results:", results_test[-1])
     print("Time Taken:", time_taken)
+    print("Number of clauses:", tm_instance.tm.number_of_clauses)
 
 '''
 Main Function to start either single run or exploration.
