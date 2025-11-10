@@ -2,15 +2,17 @@ from GraphTsetlinMachine.graphs import Graphs
 import numpy as np
 from time import time
 from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
+import edge_strategies
 
 class graph_tm:
 
-    def __init__(self, args, number_of_nodes, node_names, games_train, games_test):
+    def __init__(self, args, number_of_nodes, node_names, games_train, games_test, edge_topology):
         self.args = args
         self.number_of_nodes = number_of_nodes
         self.node_names = node_names
         self.games_train = games_train
         self.games_test = games_test
+        self.edge_topology = edge_topology
 
         # placeholders set up later
         self.graphs_train = None
@@ -28,7 +30,6 @@ class graph_tm:
     def prepare_graphs(self):
         self.graphs_train = Graphs(
             self.args.number_of_graphs_train,
-            #node_names=node_names,
             symbols=self.args.symbols,
             hypervector_size=self.args.hypervector_size,
             hypervector_bits=self.args.hypervector_bits,
@@ -39,7 +40,6 @@ class graph_tm:
         '''
         self.graphs_test = Graphs(
             self.args.number_of_graphs_test,
-            #node_names=node_names,
             symbols=self.args.symbols,
             hypervector_size=self.args.hypervector_size,
             hypervector_bits=self.args.hypervector_bits,
@@ -52,14 +52,17 @@ class graph_tm:
     to represent all locations on the board for both.
     '''
     def create_graphs_nodes(self, graphs, number_of_graphs, number_of_nodes):
+        neighbor_map = edge_strategies.build_edge_neighbor_map(
+            self.node_names, self.edge_topology
+        )
         for graph_id in range(number_of_graphs):
             graphs.set_number_of_graph_nodes(graph_id, number_of_nodes)
         
         graphs.prepare_node_configuration()
 
         for graph_id in range(number_of_graphs):
-            number_of_outgoing_edges = number_of_nodes - 1
             for node_name in self.node_names:
+                number_of_outgoing_edges = len(neighbor_map.get(node_name, []))
                 graphs.add_graph_node(graph_id, node_name, number_of_outgoing_edges)
 
 
@@ -74,16 +77,14 @@ class graph_tm:
     '''
     def create_graphs_edges(self, graphs, number_of_graphs, number_of_nodes):
         graphs.prepare_edge_configuration()
+        neighbor_map = edge_strategies.build_edge_neighbor_map(
+            self.node_names, self.edge_topology
+        )
 
         for graph_id in range(number_of_graphs):
-            # WARNING: Plain might not be sufficient
-            # IDEA: Maybe something like distance and direction would make more sense,
-            # as highlight the relationship
-            edge_type = "Plain"
-            for node_name in self.node_names:
-                for neighbor_node_name in self.node_names:
-                    if node_name != neighbor_node_name:
-                        graphs.add_graph_node_edge(graph_id, node_name, neighbor_node_name, edge_type)
+            for node_name, neighbors in neighbor_map.items():
+                for neighbor_node_name, edge_type in neighbors:
+                    graphs.add_graph_node_edge(graph_id, node_name, neighbor_node_name, edge_type)
 
 
     '''

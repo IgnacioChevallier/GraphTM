@@ -28,6 +28,7 @@ def default_args(**kwargs):
     parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=100000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=100000, type=int) # Number of graphs used for testing
+    parser.add_argument("--edge_topology", default="hex", type=str) # Edge topology: complete, hex, square, triangle
 
     args = parser.parse_args()
     for key, value in kwargs.items():
@@ -46,7 +47,8 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
         "T": [1000, 5000, 10000, 20000],
         "number_of_state_bits": [4, 6, 8, 10],
         "number_of_graphs_train": [5000, 10000, 20000, 40000],
-        "epochs": [50] # for now keeping epochs constant
+        "epochs": [50], # for now keeping epochs constant
+        "edge_topology": ["complete"]
     }
 
     '''
@@ -78,7 +80,7 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
 Run multiple explorations of the Graph Tsetlin Machine with different parameters.
 Save the results in "data/exploration_results" after all explorations are done.
 '''
-def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test):
+def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test, edge_topology):
     total_exploration_results = []
     for i in range(total_explorations):
         args = new_exploration_args(starting_exploration_index + i)
@@ -87,7 +89,8 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
             number_of_nodes,
             node_names,
             games_train,
-            games_test
+            games_test,
+            edge_topology
         )
         results_train, results_test, time_taken = tm_instance.run()
         # print("Exploration Parameters:", args)
@@ -111,13 +114,14 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
 '''
 Single run of the Graph Tsetlin Machine with given parameters.
 '''
-def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
+def run_single_tm(args, number_of_nodes, node_names, games_train, games_test, edge_topology):
     tm_instance = graph_tm.graph_tm(
         args,
         number_of_nodes,
         node_names,
         games_train,
-        games_test
+        games_test,
+        edge_topology
     )
     results_train, results_test, time_taken = tm_instance.run()
     print("Training Results:", results_train[-1])
@@ -128,12 +132,12 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
 '''
 Main Function to start either single run or exploration.
 '''
-def main(single_run: bool = True, BOARD_SIZE: int = 3):
+def main(single_run: bool = True, BOARD_SIZE: int = 3, edge_topology: str = "hex"):
     number_of_nodes, node_names, games_train, games_test = setup_game.setup_game(default_args(), BOARD_SIZE)
     if single_run:
-        run_single_tm(default_args(), number_of_nodes, node_names, games_train, games_test)
+        run_single_tm(default_args(), number_of_nodes, node_names, games_train, games_test, edge_topology)
     else:
-        explore_tms(random.randint(0,10**10), 50, number_of_nodes, node_names, games_train, games_test)
+        explore_tms(random.randint(0,10**10), 50, number_of_nodes, node_names, games_train, games_test, edge_topology)
 
 if __name__ == "__main__":
     main()
