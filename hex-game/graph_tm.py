@@ -5,11 +5,11 @@ from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
 
 class graph_tm:
 
-    def __init__(self, args, number_of_nodes, node_names, games_train, games_test, edge_conections):
+    def __init__(self, args, number_of_nodes, node_names, games_train, games_test, edge_connections):
         self.args = args
         self.number_of_nodes = number_of_nodes
         self.node_names = node_names
-        self.edge_connections = edge_conections
+        self.edge_connections = edge_connections
         self.games_train = games_train
         self.games_test = games_test
 
@@ -243,13 +243,13 @@ class graph_tm:
         '''
         Creating edges for both training and testing graphs.
         '''
-        if self.args.edge_type == "full":
+        if self.args.edge_connections == "full":
             self.create_graphs_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
             self.create_graphs_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
-        elif self.args.edge_type == "neighbor":
+        elif self.args.edge_connections == "neighbor":
             self.create_graphs_neighbor_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
             self.create_graphs_neighbor_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
-        elif self.args.edge_type == "neighbor_2":
+        elif self.args.edge_connections == "neighbor_2":
             self.create_graphs_neighbor_2_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
             self.create_graphs_neighbor_2_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
         else:
