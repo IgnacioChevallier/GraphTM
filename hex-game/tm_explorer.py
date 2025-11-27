@@ -87,7 +87,8 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
             number_of_nodes,
             node_names,
             games_train,
-            games_test
+            games_test,
+            edge_conections="full"
         )
         results_train, results_test, time_taken = tm_instance.run()
         # print("Exploration Parameters:", args)
@@ -117,7 +118,8 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
         number_of_nodes,
         node_names,
         games_train,
-        games_test
+        games_test,
+        edge_conections="full"
     )
     results_train, results_test, time_taken = tm_instance.run()
     board_size = int(len(node_names) ** 0.5)

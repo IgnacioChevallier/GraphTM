@@ -5,10 +5,11 @@ from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
 
 class graph_tm:
 
-    def __init__(self, args, number_of_nodes, node_names, games_train, games_test):
+    def __init__(self, args, number_of_nodes, node_names, games_train, games_test, edge_conections):
         self.args = args
         self.number_of_nodes = number_of_nodes
         self.node_names = node_names
+        self.edge_connections = edge_conections
         self.games_train = games_train
         self.games_test = games_test
 
@@ -85,6 +86,101 @@ class graph_tm:
                     if node_name != neighbor_node_name:
                         graphs.add_graph_node_edge(graph_id, node_name, neighbor_node_name, edge_type)
 
+    '''
+    Creating neighbor edges.
+    Connected every node with his 6 possible neighbors 
+    Important in bigger board sizes.
+    '''
+    def create_graphs_neighbor_edges(self, graphs, number_of_graphs, number_of_nodes):
+        graphs.prepare_edge_configuration()
+
+        board_size = int(np.sqrt(number_of_nodes))
+        
+        if board_size * board_size != number_of_nodes:
+            raise ValueError(f"Number of Nodes ({number_of_nodes}) isn't a perfect squarenumber. "
+                             "Logic expects N*N-Board.")
+        
+        for graph_id in range(number_of_graphs):
+            edge_type = "Plain"
+            for node_name in self.node_names:
+                try:
+                    r_str, c_str = node_name.split(':')
+                    r = int(r_str) # Row
+                    c = int(c_str) # Column
+                except ValueError:
+                    print(f"Warning: Wrong nodename: {node_name}, contiuning.")
+                    continue
+
+                potential_neighbors_coords = [
+                    (r-1, c),  
+                    (r-1, c+1),
+                    (r,   c-1),
+                    (r,   c+1),
+                    (r+1, c-1),
+                    (r+1, c)
+                ]
+
+                for nr, nc in potential_neighbors_coords:
+                    if (1 <= nr <= board_size) and (1 <= nc <= board_size):
+                        neighbor_node_name = f"{nr}:{nc}"
+                        graphs.add_graph_node_edge(graph_id, node_name, neighbor_node_name, edge_type)
+
+    '''
+    Creating neighbor edges up to 2nd degree (N1 + N2).
+    Connected every node with his 6 direct neighbors (N1)
+    and his 12 2-times neighbors (N2).
+    '''
+    def create_graphs_neighbor_2_edges(self, graphs, number_of_graphs, number_of_nodes):
+        graphs.prepare_edge_configuration()
+
+        board_size = int(np.sqrt(number_of_nodes))
+        
+        if board_size * board_size != number_of_nodes:
+            raise ValueError(f"Number of Nodes ({number_of_nodes}) isn't a perfect squarenumber. "
+                             "Logic expects N*N-Board.")
+        
+        n1_offsets = [
+            (-1, 0),  
+            (-1, 1), 
+            ( 0,-1), 
+            ( 0, 1), 
+            ( 1,-1), 
+            ( 1, 0)
+        ]
+        
+        n2_offsets = [
+            (-2, 0), (-2, 1), (-1, -1),
+            (-2, 2), (-1, 2), ( 0, -2),
+            ( 1,-2), ( 0, 2), ( 1, 1),
+            ( 2,-2), ( 2,-1), ( 2, 0)
+        ]
+
+        for graph_id in range(number_of_graphs):
+            for node_name in self.node_names:
+                try:
+                    r_str, c_str = node_name.split(':')
+                    r = int(r_str) # Row
+                    c = int(c_str) # Column
+                except ValueError:
+                    print(f"Warning: Wrong nodename: {node_name}, contiuning.")
+                    continue
+
+                # Gemini says that we should use different edge types, but i'm not sure if that is right.
+                # edge_type = "Neighbor_N1" 
+
+                # Edges for 1 grade
+                for dr, dc in n1_offsets:
+                    nr, nc = r + dr, c + dc
+                    if (1 <= nr <= board_size) and (1 <= nc <= board_size):
+                        neighbor_node_name = f"{nr}:{nc}"
+                        graphs.add_graph_node_edge(graph_id, node_name, neighbor_node_name, "plain")
+
+                # edges for 2 grade
+                for dr, dc in n2_offsets:
+                    nr, nc = r + dr, c + dc
+                    if (1 <= nr <= board_size) and (1 <= nc <= board_size):
+                        neighbor_node_name = f"{nr}:{nc}"
+                        graphs.add_graph_node_edge(graph_id, node_name, neighbor_node_name, "plain")
 
     '''
     Load the learning data games into the different graphs, 
@@ -147,9 +243,17 @@ class graph_tm:
         '''
         Creating edges for both training and testing graphs.
         '''
-        self.create_graphs_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
-        self.create_graphs_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
-
+        if self.args.edge_type == "full":
+            self.create_graphs_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
+            self.create_graphs_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
+        elif self.args.edge_type == "neighbor":
+            self.create_graphs_neighbor_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
+            self.create_graphs_neighbor_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
+        elif self.args.edge_type == "neighbor_2":
+            self.create_graphs_neighbor_2_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
+            self.create_graphs_neighbor_2_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
+        else:
+            raise ValueError(f"Unknown edge_type: {self.args.edge_type}. Supported types are 'full' and 'neighbor'.")
         '''
         Filling the graphs with the board game data.
         '''
