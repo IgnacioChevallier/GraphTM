@@ -13,7 +13,7 @@ class graph_tm:
         self.edge_connections = edge_connections
         self.games_train = games_train
         self.games_test = games_test
-        self.edge_topology = edge_topology
+        #self.edge_topology = edge_topology
 
         # placeholders set up later
         self.graphs_train = None
