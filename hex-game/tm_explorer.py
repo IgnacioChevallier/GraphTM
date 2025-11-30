@@ -11,9 +11,9 @@ Overall arguments, that influence the final outcome of the GraphTM.
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", default=3, type=int) # Total number of times the model will iterate over the entire training dataset
-    parser.add_argument("--number-of-clauses", default=1000, type=int) # Higher number = More complexity in the learned patters
-    parser.add_argument("--T", default=1000, type=int) # Threshold for votes a clause needs
-    parser.add_argument("--s", default=2.0, type=float) # Theshold to include literals
+    parser.add_argument("--number-of-clauses", default=5000, type=int) # Higher number = More complexity in the learned patters
+    parser.add_argument("--T", default=5000, type=int) # Threshold for votes a clause needs
+    parser.add_argument("--s", default=5.0, type=float) # Theshold to include literals
     parser.add_argument("--number-of-state-bits", default=8, type=int) # Depth 2^8 states
     parser.add_argument("--depth", default=2, type=int) # Message depth btw. nodes
     parser.add_argument("--symbols", nargs="+", default=['X', 'O', '.']) #Graph Symbols: X_Player1, O_Player2, ._Empty
@@ -135,7 +135,7 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
 '''
 Main Function to start either single run or exploration.
 '''
-def main(single_run: bool = True, BOARD_SIZE: int = 3):
+def main(single_run: bool = True, BOARD_SIZE: int = 10):
     number_of_nodes, node_names, games_train, games_test = setup_game.setup_game(default_args(), BOARD_SIZE)
     if single_run:
         run_single_tm(default_args(), number_of_nodes, node_names, games_train, games_test)
