@@ -41,7 +41,7 @@ def load_model_data(model_path: Path):
             model_dict = pickle.load(f)
     except Exception as e:
         st.error(f"Error loading pickle file: {e}")
-        return None, None
+        return None, None, None
 
     '''
     Block 1: Extract simple model parameters.
@@ -93,7 +93,7 @@ def load_model_data(model_path: Path):
 
     except KeyError as e:
         st.error(f"Error: Expected key {e} not found in model dictionary.")
-        return None, None
+        return None, None, None
     except Exception as e:
         st.error(f"Error analyzing model structure (ta_state/clause_weights): {e}")
         return None, None
@@ -108,8 +108,10 @@ def load_model_data(model_path: Path):
         "relevance_score": relevance_scores
     })
     
+    metadata = model_dict.get("metadata", {})
+
     st.success(f"Model {model_path.name} loaded successfully.")
-    return parameters, df_clauses
+    return parameters, df_clauses, metadata
 
 # -------------------------------------------------------------------
 # HELPER FUNCTIONS
@@ -184,7 +186,7 @@ else:
     Load the data for the selected model.
     This uses the cached 'load_model_data' function.
     '''
-    params, df_clauses = load_model_data(selected_model_path)
+    params, df_clauses, metadata = load_model_data(selected_model_path)
 
     '''
     Display the main dashboard only if the model data
@@ -257,7 +259,7 @@ else:
         st.info("This shows relevance based on clause weights (for Output 0).")
         
         df_clauses_sorted = df_clauses.sort_values(by="relevance_score", ascending=False)
-        top_n = st.slider("Number of most relevant clauses (Top-N)", min_value=5, max_value=100, value=20, key=selected_model_name)
+        top_n = st.slider("Number of most relevant clauses (Top-N)", min_value=5, max_value=100, value=20, key=f"relevance_{selected_model_name}")
 
         '''
         Displaying the Bar Chart for Top-N most relevant clauses.
@@ -277,6 +279,45 @@ else:
         '''
         st.subheader(f"Raw Data for Top {top_n} Clauses")
         st.dataframe(df_clauses_sorted.head(top_n))
+
+        '''
+        Section 3: Clause Construction (Symbolic)
+        '''
+        clause_metadata = {}
+        if isinstance(metadata, dict):
+            clause_metadata = metadata.get("clauses", {}) or {}
+
+        if clause_metadata:
+            st.subheader("Clause Reconstructions (Conjunctions)")
+            depth_options = list(clause_metadata.keys())
+            default_index = 0
+            selected_depth = st.selectbox(
+                "Select clause depth representation",
+                options=depth_options,
+                index=default_index,
+                key=f"clauses_{selected_model_name}"
+            )
+
+            clause_strings = clause_metadata.get(selected_depth, [])
+            if clause_strings:
+                max_display = min(200, len(clause_strings))
+                display_n = st.slider(
+                    "Number of clauses to show",
+                    min_value=5,
+                    max_value=max_display if max_display >= 5 else len(clause_strings),
+                    value=min(20, max_display),
+                    key=f"clauses_display_{selected_model_name}"
+                ) if len(clause_strings) > 5 else len(clause_strings)
+
+                clause_df = pd.DataFrame({
+                    "clause_id": [f"Clause_{i}" for i in range(len(clause_strings))],
+                    "clause_text": clause_strings,
+                })
+                st.dataframe(clause_df.head(display_n))
+            else:
+                st.info("No clause strings stored for this depth.")
+        else:
+            st.info("Clause reconstructions are unavailable for this model. Re-train with --save-model to capture them.")
 
     else:
         st.error(f"Dashboard could not be loaded for {selected_model_name}.")

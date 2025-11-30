@@ -68,6 +68,44 @@ def load_exploration_results():
             return []
 
 
+def _literal_name(idx: int, width: int, prefix: str) -> str:
+    half = max(width // 2, 1)
+    base_idx = idx if idx < half else idx - half
+    label = f"{prefix}{base_idx}"
+    return label if idx < half else f"NOT {label}"
+
+
+def _clauses_for_depth(tm, depth: int, width: int, prefix: str) -> list[str]:
+    clauses = []
+    if width <= 0:
+        return clauses
+
+    for clause_idx in range(tm.number_of_clauses):
+        literals = [
+            _literal_name(literal_idx, width, prefix)
+            for literal_idx in range(width)
+            if tm.ta_action(depth, clause_idx, literal_idx)
+        ]
+        clauses.append(" AND ".join(literals) if literals else "<EMPTY>")
+    return clauses
+
+
+def _extract_clause_strings(tm) -> dict[str, list[str]]:
+    clause_map: dict[str, list[str]] = {}
+
+    literal_width = getattr(tm, "number_of_literals", 0)
+    if literal_width:
+        clause_map["depth0_literals"] = _clauses_for_depth(tm, depth=0, width=literal_width, prefix="X")
+
+    message_width = getattr(tm, "number_of_message_literals", 0)
+    for depth in range(1, getattr(tm, "depth", 1)):
+        if message_width:
+            key = f"depth{depth}_messages"
+            clause_map[key] = _clauses_for_depth(tm, depth=depth, width=message_width, prefix=f"M{depth}_")
+
+    return clause_map
+
+
 def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, prefix: str = "tm_model", args=None):
     """
     Persist the trained TM using pickle so that the dashboard can inspect it.
@@ -90,6 +128,11 @@ def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, pref
     filename = f"{prefix}_acc_{accuracy_token}{board_fragment}_date_{timestamp}.pkl"
     target_path = model_dir / filename
 
+    try:
+        clause_strings = _extract_clause_strings(tm)
+    except Exception as exc:  # pragma: no cover - best effort
+        clause_strings = {"__error__": [str(exc)]}
+
     state_dict = tm.save("")
     metadata = {
         "timestamp": timestamp,
@@ -100,6 +143,8 @@ def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, pref
             metadata["args_snapshot"] = vars(args)
         except Exception:
             metadata["args_snapshot"] = str(args)
+
+    metadata["clauses"] = clause_strings
 
     state_dict.setdefault("metadata", {}).update(metadata)
 
