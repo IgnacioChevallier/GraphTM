@@ -24,6 +24,8 @@ def default_args(**kwargs):
     parser.add_argument("--message-bits", default=2, type=int)
     parser.add_argument('--double-hashing', dest='double_hashing', default=False, action='store_true')
     parser.add_argument('--one-hot-encoding', dest='one_hot_encoding', default=False, action='store_true')
+    parser.add_argument('--save-model', dest='save_model', default=True, action='store_true',
+                        help="Persist trained TM checkpoints in hex-game/models")
     
     parser.add_argument("--max-included-literals", default=10, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=100000, type=int) # Number of graphs used for training
@@ -109,6 +111,9 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
 
         total_exploration_results.append(results_payload)
 
+        if getattr(args, "save_model", False) and results_test:
+            data_manager.save_model_checkpoint(tm_instance.tm, results_test[-1])
+
     data_manager.save_exploration_results(total_exploration_results)
 
 
@@ -125,6 +130,8 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
         edge_connections=args.edge_connections
     )
     results_train, results_test, time_taken = tm_instance.run()
+    if getattr(args, "save_model", False) and results_test:
+        data_manager.save_model_checkpoint(tm_instance.tm, results_test[-1])
     board_size = int(len(node_names) ** 0.5)
     print("Training Results:", results_train[-1])
     print("Testing Results:", results_test[-1])
