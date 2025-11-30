@@ -31,7 +31,6 @@ class graph_tm:
     def prepare_graphs(self):
         self.graphs_train = Graphs(
             self.args.number_of_graphs_train,
-            #node_names=node_names,
             symbols=self.args.symbols,
             hypervector_size=self.args.hypervector_size,
             hypervector_bits=self.args.hypervector_bits,
@@ -42,7 +41,6 @@ class graph_tm:
         '''
         self.graphs_test = Graphs(
             self.args.number_of_graphs_test,
-            #node_names=node_names,
             symbols=self.args.symbols,
             hypervector_size=self.args.hypervector_size,
             hypervector_bits=self.args.hypervector_bits,

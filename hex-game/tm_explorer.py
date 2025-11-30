@@ -28,9 +28,9 @@ def default_args(**kwargs):
                         help="Persist trained TM checkpoints in hex-game/models")
     
     parser.add_argument("--max-included-literals", default=10, type=int) # Max number of features learned per clause
-    parser.add_argument("--number_of_graphs_train", default=100000, type=int) # Number of graphs used for training
-    parser.add_argument("--number_of_graphs_test", default=100000, type=int) # Number of graphs used for testing
-    parser.add_argument("--edge-connections", default="full", type=str,
+    parser.add_argument("--number_of_graphs_train", default=10000, type=int) # Number of graphs used for training
+    parser.add_argument("--number_of_graphs_test", default=10000, type=int) # Number of graphs used for testing
+    parser.add_argument("--edge-connections", default="neighbor_1", type=str,
                     help="Type of edge connections: full, neighbor_1, or neighbor_2")
 
     args = parser.parse_args()
@@ -143,7 +143,7 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
 '''
 Main Function to start either single run or exploration.
 '''
-def main(single_run: bool = True, BOARD_SIZE: int = 3):
+def main(single_run: bool = True, BOARD_SIZE: int = 11):
     number_of_nodes, node_names, games_train, games_test = setup_game.setup_game(default_args(), BOARD_SIZE)
     setattr(default_args(), "board_size", BOARD_SIZE)
     if single_run:
