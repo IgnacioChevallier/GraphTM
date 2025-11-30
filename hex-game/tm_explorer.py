@@ -11,9 +11,9 @@ Overall arguments, that influence the final outcome of the GraphTM.
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", default=3, type=int) # Total number of times the model will iterate over the entire training dataset
-    parser.add_argument("--number-of-clauses", default=10000, type=int) # Higher number = More complexity in the learned patters
-    parser.add_argument("--T", default=5000, type=int) # Threshold for votes a clause needs
-    parser.add_argument("--s", default=2.0, type=float) # Theshold to include literals
+    parser.add_argument("--number-of-clauses", default=60, type=int) # Higher number = More complexity in the learned patters
+    parser.add_argument("--T", default=1, type=int) # Threshold for votes a clause needs
+    parser.add_argument("--s", default=1.1, type=float) # Theshold to include literals
     parser.add_argument("--number-of-state-bits", default=8, type=int) # Depth 2^8 states
     parser.add_argument("--depth", default=2, type=int) # Message depth btw. nodes
     parser.add_argument("--symbols", nargs="+", default=['X', 'O', '.']) #Graph Symbols: X_Player1, O_Player2, ._Empty
@@ -24,6 +24,8 @@ def default_args(**kwargs):
     parser.add_argument("--message-bits", default=2, type=int)
     parser.add_argument('--double-hashing', dest='double_hashing', default=False, action='store_true')
     parser.add_argument('--one-hot-encoding', dest='one_hot_encoding', default=False, action='store_true')
+    parser.add_argument('--save-model', dest='save_model', default=True, action='store_true',
+                        help="Persist trained TM checkpoints in hex-game/models")
     
     parser.add_argument("--max-included-literals", default=10, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=10000, type=int) # Number of graphs used for training
@@ -83,6 +85,7 @@ Save the results in "data/exploration_results" after all explorations are done.
 '''
 def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test):
     total_exploration_results = []
+
     for i in range(total_explorations):
         args = new_exploration_args(starting_exploration_index + i)
         tm_instance = graph_tm.graph_tm(
@@ -109,6 +112,9 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
 
         total_exploration_results.append(results_payload)
 
+        if getattr(args, "save_model", False) and results_test:
+            data_manager.save_model_checkpoint(tm_instance.tm, results_test[-1], args=args)
+
     data_manager.save_exploration_results(total_exploration_results)
 
 
@@ -125,6 +131,8 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
         edge_connections=args.edge_connections
     )
     results_train, results_test, time_taken = tm_instance.run()
+    if getattr(args, "save_model", False) and results_test:
+        data_manager.save_model_checkpoint(tm_instance.tm, results_test[-1], args=args)
     board_size = int(len(node_names) ** 0.5)
     print("Training Results:", results_train[-1])
     print("Testing Results:", results_test[-1])
@@ -137,6 +145,7 @@ Main Function to start either single run or exploration.
 '''
 def main(single_run: bool = True, BOARD_SIZE: int = 11):
     number_of_nodes, node_names, games_train, games_test = setup_game.setup_game(default_args(), BOARD_SIZE)
+    setattr(default_args(), "board_size", BOARD_SIZE)
     if single_run:
         run_single_tm(default_args(), number_of_nodes, node_names, games_train, games_test)
     else:

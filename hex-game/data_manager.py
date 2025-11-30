@@ -1,8 +1,10 @@
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import json
+import pickle
 
 FILE_PATH_EXPLORATION = Path(__file__).parent / 'data' / 'exploration_results'
+MODELS_DIR = Path(__file__).parent / 'models'
 
 
 '''
@@ -64,4 +66,45 @@ def load_exploration_results():
             return data
         except Exception:
             return []
+
+
+def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, prefix: str = "tm_model", args=None):
+    """
+    Persist the trained TM using pickle so that the dashboard can inspect it.
+    """
+    if model_dir is None:
+        model_dir = MODELS_DIR
+    model_dir = Path(model_dir)
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        accuracy_token = str(int(round(float(test_accuracy))))
+    except Exception:
+        accuracy_token = "unknown"
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y_%m_%d_%H_%M_%S")
+    board_token = None
+    if args is not None:
+        board_token = getattr(args, "board_size", None) or getattr(args, "BOARD_SIZE", None)
+    board_fragment = f"_board_{board_token}" if board_token is not None else ""
+    filename = f"{prefix}_acc_{accuracy_token}{board_fragment}_date_{timestamp}.pkl"
+    target_path = model_dir / filename
+
+    state_dict = tm.save("")
+    metadata = {
+        "timestamp": timestamp,
+        "test_accuracy": float(test_accuracy) if test_accuracy is not None else None,
+    }
+    if args is not None:
+        try:
+            metadata["args_snapshot"] = vars(args)
+        except Exception:
+            metadata["args_snapshot"] = str(args)
+
+    state_dict.setdefault("metadata", {}).update(metadata)
+
+    with open(target_path, "wb") as fh:
+        pickle.dump(state_dict, fh)
+
+    return target_path
         

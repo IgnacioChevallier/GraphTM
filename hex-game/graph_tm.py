@@ -150,7 +150,7 @@ class graph_tm:
         '''
         self.create_graphs_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
         self.create_graphs_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
-        
+
         '''
         Filling the graphs with the board game data.
         '''

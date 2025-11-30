@@ -70,11 +70,16 @@ def load_model_data(model_path: Path):
         
         '''
         Processing 'ta_state' to count literals per clause.
-        'ta_state' is assumed to be a flat array that needs reshaping.
-        We count non-zero entries per clause row to find the literal count.
+        Use the stored number of clauses and infer the width dynamically
+        so mismatched configurations do not break reshaping.
         '''
         ta_state_flat = model_dict['ta_state']
-        ta_state_reshaped = ta_state_flat.reshape((num_clauses, max_literals_storage))
+        if ta_state_flat.size % num_clauses != 0:
+            raise ValueError(
+                f"ta_state size {ta_state_flat.size} not divisible by number_of_clauses={num_clauses}"
+            )
+        ta_state_width = ta_state_flat.size // num_clauses
+        ta_state_reshaped = ta_state_flat.reshape((num_clauses, ta_state_width))
         literal_counts = np.count_nonzero(ta_state_reshaped, axis=1)
 
         '''
