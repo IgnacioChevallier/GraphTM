@@ -2,7 +2,6 @@ from GraphTsetlinMachine.graphs import Graphs
 import numpy as np
 from time import time
 from GraphTsetlinMachine.tm import MultiClassGraphTsetlinMachine
-import edge_strategies
 
 class graph_tm:
 
@@ -13,7 +12,6 @@ class graph_tm:
         self.edge_connections = edge_connections
         self.games_train = games_train
         self.games_test = games_test
-        #self.edge_topology = edge_topology
 
         # placeholders set up later
         self.graphs_train = None
@@ -53,9 +51,6 @@ class graph_tm:
     to represent all locations on the board for both.
     '''
     def create_graphs_nodes(self, graphs, number_of_graphs, number_of_nodes):
-        neighbor_map = edge_strategies.build_edge_neighbor_map(
-            self.node_names, self.edge_topology
-        )
         for graph_id in range(number_of_graphs):
             graphs.set_number_of_graph_nodes(graph_id, number_of_nodes)
         
@@ -63,7 +58,7 @@ class graph_tm:
 
         for graph_id in range(number_of_graphs):
             for node_name in self.node_names:
-                number_of_outgoing_edges = len(neighbor_map.get(node_name, []))
+                number_of_outgoing_edges = len(self.node_names) - 1  # excluding self-loops
                 graphs.add_graph_node(graph_id, node_name, number_of_outgoing_edges)
 
 
