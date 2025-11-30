@@ -10,7 +10,7 @@ class graph_tm:
         self.args = args
         self.number_of_nodes = number_of_nodes
         self.node_names = node_names
-        self.edge_connections = edge_connections or getattr(args, "edge_connections", "full")
+        self.edge_connections = edge_connections
         self.games_train = games_train
         self.games_test = games_test
 
