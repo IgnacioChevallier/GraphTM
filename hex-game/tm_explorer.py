@@ -85,6 +85,7 @@ Save the results in "data/exploration_results" after all explorations are done.
 '''
 def explore_tms(starting_exploration_index, total_explorations, number_of_nodes, node_names, games_train, games_test):
     total_exploration_results = []
+
     for i in range(total_explorations):
         args = new_exploration_args(starting_exploration_index + i)
         tm_instance = graph_tm.graph_tm(
@@ -144,6 +145,7 @@ Main Function to start either single run or exploration.
 '''
 def main(single_run: bool = True, BOARD_SIZE: int = 3):
     number_of_nodes, node_names, games_train, games_test = setup_game.setup_game(default_args(), BOARD_SIZE)
+    setattr(default_args(), "board_size", BOARD_SIZE)
     if single_run:
         run_single_tm(default_args(), number_of_nodes, node_names, games_train, games_test)
     else:
