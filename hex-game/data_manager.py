@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import datetime, timezone
 import json
+import pickle
 
 FILE_PATH_EXPLORATION = Path(__file__).parent / 'data' / 'exploration_results'
 MODELS_DIR = Path(__file__).parent / 'models'
@@ -67,7 +68,7 @@ def load_exploration_results():
             return []
 
 
-def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, prefix: str = "tm_model"):
+def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, prefix: str = "tm_model", args=None):
     """
     Persist the trained TM using pickle so that the dashboard can inspect it.
     """
@@ -85,6 +86,21 @@ def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, pref
     filename = f"{prefix}_acc_{accuracy_token}_date_{timestamp}.pkl"
     target_path = model_dir / filename
 
-    tm.save(str(target_path))
+    state_dict = tm.save("")
+    metadata = {
+        "timestamp": timestamp,
+        "test_accuracy": float(test_accuracy) if test_accuracy is not None else None,
+    }
+    if args is not None:
+        try:
+            metadata["args_snapshot"] = vars(args)
+        except Exception:
+            metadata["args_snapshot"] = str(args)
+
+    state_dict.setdefault("metadata", {}).update(metadata)
+
+    with open(target_path, "wb") as fh:
+        pickle.dump(state_dict, fh)
+
     return target_path
         
