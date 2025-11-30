@@ -83,7 +83,11 @@ def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, pref
         accuracy_token = "unknown"
 
     timestamp = datetime.now(timezone.utc).strftime("%Y_%m_%d_%H_%M_%S")
-    filename = f"{prefix}_acc_{accuracy_token}_date_{timestamp}.pkl"
+    board_token = None
+    if args is not None:
+        board_token = getattr(args, "board_size", None) or getattr(args, "BOARD_SIZE", None)
+    board_fragment = f"_board_{board_token}" if board_token is not None else ""
+    filename = f"{prefix}_acc_{accuracy_token}{board_fragment}_date_{timestamp}.pkl"
     target_path = model_dir / filename
 
     state_dict = tm.save("")
