@@ -25,10 +25,11 @@ def default_args(**kwargs):
     parser.add_argument('--double-hashing', dest='double_hashing', default=False, action='store_true')
     parser.add_argument('--one-hot-encoding', dest='one_hot_encoding', default=False, action='store_true')
     
-    parser.add_argument("--max-included-literals", default=32, type=int) # Max number of features learned per clause
+    parser.add_argument("--max-included-literals", default=10, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=100000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=100000, type=int) # Number of graphs used for testing
-    parser.add_argument("--edge_topology", default="hex", type=str) # Edge topology: complete, hex, square, triangle
+    parser.add_argument("--edge-connections", default="full", type=str,
+                    help="Type of edge connections: full, neighbor, or neighbor_2")
 
     args = parser.parse_args()
     for key, value in kwargs.items():
@@ -90,7 +91,7 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
             node_names,
             games_train,
             games_test,
-            edge_topology
+            edge_connections="full"
         )
         results_train, results_test, time_taken = tm_instance.run()
         # print("Exploration Parameters:", args)
@@ -121,7 +122,7 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test, ed
         node_names,
         games_train,
         games_test,
-        edge_topology
+        edge_connections="full"
     )
     results_train, results_test, time_taken = tm_instance.run()
     board_size = int(len(node_names) ** 0.5)
