@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import numpy as np
 import pickle
 import sys
 import re  # Import regular expression module
 from pathlib import Path
+import math
 
 
 #command to run the app:
@@ -25,6 +27,10 @@ MODEL_DIR = Path("hex-game/models")
 # -------------------------------------------------------------------
 # HELPER FUNCTIONS
 # -------------------------------------------------------------------
+
+# Hex game symbols - order matters for hypervector mapping
+HEX_SYMBOLS = ['X', 'O', '.']  # X=Player1(Black), O=Player2(White), .=Empty
+
 def get_clause_literals(ta_state_row, number_of_state_bits=8):
     '''
     Extracts the active literals from a clause's TA state row.
@@ -62,6 +68,238 @@ def get_clause_literals(ta_state_row, number_of_state_bits=8):
     
     return active_literals
 
+
+def interpret_literals_for_hex(active_literals, hypervectors, hypervector_size, board_size):
+    '''
+    Interprets the active literals in the context of a Hex game.
+    
+    The literals are hypervector bits. We need to map them back to symbols
+    by checking which symbol hypervectors they match.
+    
+    For each literal index:
+    - If index < hypervector_size: it's a positive literal (symbol present)
+    - If index >= hypervector_size: it's a negative literal (symbol absent), index -= hypervector_size
+    
+    Returns a dict with:
+    - 'positive_symbols': dict mapping symbol_idx -> list of matching literal indices
+    - 'negative_symbols': dict mapping symbol_idx -> list of matching literal indices  
+    - 'contradictions': list of symbols that have both positive and negative evidence
+    '''
+    num_symbols = len(HEX_SYMBOLS)
+    
+    # Build reverse mapping: hypervector_bit -> list of (symbol_idx, bit_position_in_symbol)
+    bit_to_symbols = {}
+    for sym_idx, sym_hv in enumerate(hypervectors):
+        for bit_pos in sym_hv:
+            if bit_pos not in bit_to_symbols:
+                bit_to_symbols[bit_pos] = []
+            bit_to_symbols[bit_pos].append(sym_idx)
+    
+    # Count matches for each symbol (positive and negative)
+    positive_counts = {i: 0 for i in range(num_symbols)}
+    negative_counts = {i: 0 for i in range(num_symbols)}
+    
+    positive_bits = []
+    negative_bits = []
+    
+    for lit_idx, ta_state in active_literals:
+        if lit_idx < hypervector_size:
+            # Positive literal
+            positive_bits.append(lit_idx)
+            if lit_idx in bit_to_symbols:
+                for sym_idx in bit_to_symbols[lit_idx]:
+                    positive_counts[sym_idx] += 1
+        else:
+            # Negative literal
+            actual_bit = lit_idx - hypervector_size
+            negative_bits.append(actual_bit)
+            if actual_bit in bit_to_symbols:
+                for sym_idx in bit_to_symbols[actual_bit]:
+                    negative_counts[sym_idx] += 1
+    
+    # Determine which symbols are strongly indicated
+    hypervector_bits = hypervectors.shape[1] if len(hypervectors.shape) > 1 else 1
+    threshold = hypervector_bits // 2  # At least half the bits should match
+    
+    result = {
+        'positive_symbols': [],  # Symbols that should be present
+        'negative_symbols': [],  # Symbols that should be absent  
+        'positive_counts': positive_counts,
+        'negative_counts': negative_counts,
+        'contradictions': [],
+        'positive_bits': positive_bits,
+        'negative_bits': negative_bits,
+    }
+    
+    for sym_idx in range(num_symbols):
+        pos_strong = positive_counts[sym_idx] >= threshold
+        neg_strong = negative_counts[sym_idx] >= threshold
+        
+        if pos_strong and neg_strong:
+            result['contradictions'].append(sym_idx)
+        elif pos_strong:
+            result['positive_symbols'].append(sym_idx)
+        elif neg_strong:
+            result['negative_symbols'].append(sym_idx)
+    
+    return result
+
+
+def create_hex_board_visualization(board_size, interpretation, title="Clause Pattern"):
+    '''
+    Creates a visual representation of what the clause is looking for on a Hex board.
+    
+    Uses Plotly to draw hexagonal cells with colors indicating:
+    - Green: Symbol should be present (X, O, or .)
+    - Red: Symbol should be absent (NOT X, NOT O, NOT .)
+    - Yellow: Contradiction (both present and absent)
+    - Gray: No constraint
+    '''
+    
+    # Create figure
+    fig = go.Figure()
+    
+    # Hexagon parameters
+    hex_size = 1.0
+    hex_height = hex_size * math.sqrt(3)
+    
+    # Symbol display
+    symbol_names = {0: 'X (Black)', 1: 'O (White)', 2: '. (Empty)'}
+    symbol_short = {0: 'X', 1: 'O', 2: '.'}
+    
+    # Prepare legend text
+    legend_items = []
+    
+    if interpretation['positive_symbols']:
+        pos_names = [symbol_names[s] for s in interpretation['positive_symbols']]
+        legend_items.append(f"✅ Must have: {', '.join(pos_names)}")
+    
+    if interpretation['negative_symbols']:
+        neg_names = [symbol_names[s] for s in interpretation['negative_symbols']]
+        legend_items.append(f"❌ Must NOT have: {', '.join(neg_names)}")
+    
+    if interpretation['contradictions']:
+        cont_names = [symbol_names[s] for s in interpretation['contradictions']]
+        legend_items.append(f"⚠️ Contradictions: {', '.join(cont_names)}")
+    
+    # Draw board cells
+    annotations = []
+    
+    for row in range(board_size):
+        for col in range(board_size):
+            # Hex offset positioning
+            x = col * 1.5 * hex_size + row * 0.75 * hex_size
+            y = row * hex_height * 0.5
+            
+            # Create hexagon vertices
+            angles = np.linspace(0, 2*np.pi, 7)[:-1] + np.pi/6
+            hex_x = x + hex_size * 0.5 * np.cos(angles)
+            hex_y = y + hex_size * 0.5 * np.sin(angles)
+            
+            # Determine cell color based on interpretation
+            cell_text = ""
+            cell_color = "lightgray"
+            
+            # Build cell text showing constraints
+            pos_syms = [symbol_short[s] for s in interpretation['positive_symbols']]
+            neg_syms = [symbol_short[s] for s in interpretation['negative_symbols']]
+            cont_syms = [symbol_short[s] for s in interpretation['contradictions']]
+            
+            if cont_syms:
+                cell_color = "rgba(255, 200, 0, 0.7)"  # Yellow for contradictions
+                cell_text = "⚠️"
+            elif pos_syms and neg_syms:
+                cell_color = "rgba(100, 200, 100, 0.5)"  # Light green
+                cell_text = f"{'/'.join(pos_syms)}"
+            elif pos_syms:
+                cell_color = "rgba(100, 200, 100, 0.7)"  # Green
+                cell_text = f"{'/'.join(pos_syms)}"
+            elif neg_syms:
+                cell_color = "rgba(200, 100, 100, 0.5)"  # Light red
+                cell_text = f"¬{'/'.join(neg_syms)}"
+            
+            # Draw hexagon
+            fig.add_trace(go.Scatter(
+                x=list(hex_x) + [hex_x[0]],
+                y=list(hex_y) + [hex_y[0]],
+                mode='lines',
+                fill='toself',
+                fillcolor=cell_color,
+                line=dict(color='black', width=2),
+                showlegend=False,
+                hoverinfo='text',
+                hovertext=f"Position ({row+1}:{col+1})"
+            ))
+            
+            # Add position label
+            annotations.append(dict(
+                x=x, y=y,
+                text=f"{row+1}:{col+1}",
+                showarrow=False,
+                font=dict(size=10, color='black'),
+                yshift=12
+            ))
+            
+            # Add symbol constraint
+            if cell_text:
+                annotations.append(dict(
+                    x=x, y=y,
+                    text=cell_text,
+                    showarrow=False,
+                    font=dict(size=14, color='black', family='Arial Black'),
+                    yshift=-5
+                ))
+    
+    fig.update_layout(
+        title=dict(text=title, font=dict(size=16)),
+        showlegend=False,
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x"),
+        plot_bgcolor='white',
+        height=300 + board_size * 50,
+        margin=dict(l=20, r=20, t=60, b=20)
+    )
+    
+    fig.update_layout(annotations=annotations)
+    
+    return fig, legend_items
+
+
+def create_symbol_match_visualization(interpretation):
+    '''
+    Creates a bar chart showing how many hypervector bits match each symbol.
+    '''
+    symbols = ['X (Black)', 'O (White)', '. (Empty)']
+    
+    pos_counts = [interpretation['positive_counts'].get(i, 0) for i in range(3)]
+    neg_counts = [interpretation['negative_counts'].get(i, 0) for i in range(3)]
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        name='Positive (Must Have)',
+        x=symbols,
+        y=pos_counts,
+        marker_color='green'
+    ))
+    
+    fig.add_trace(go.Bar(
+        name='Negative (Must NOT Have)',
+        x=symbols,
+        y=neg_counts,
+        marker_color='red'
+    ))
+    
+    fig.update_layout(
+        title='Symbol Match Counts (Hypervector Bits)',
+        barmode='group',
+        xaxis_title='Symbol',
+        yaxis_title='Matching Bits',
+        height=300
+    )
+    
+    return fig
+
 # -------------------------------------------------------------------
 # DATA LOADING FUNCTION
 # -------------------------------------------------------------------
@@ -81,7 +319,7 @@ def load_model_data(model_path: Path):
             model_dict = pickle.load(f)
     except Exception as e:
         st.error(f"Error loading pickle file: {e}")
-        return None, None, None, None
+        return None, None, None, None, None, None
 
     '''
     Block 1: Extract simple model parameters.
@@ -108,6 +346,13 @@ def load_model_data(model_path: Path):
         num_outputs = model_dict['number_of_outputs']
         max_literals_storage = model_dict['max_included_literals']
         number_of_state_bits = model_dict.get('number_of_state_bits', 8)  # Default to 8
+        number_of_literals = model_dict.get('number_of_literals', 64)  # hypervector_size * 2
+        hypervector_size = number_of_literals // 2
+        
+        '''
+        Extract hypervectors for symbol interpretation.
+        '''
+        hypervectors = model_dict.get('hypervectors', None)
         
         '''
         Processing 'ta_state' to count literals per clause.
@@ -140,10 +385,10 @@ def load_model_data(model_path: Path):
 
     except KeyError as e:
         st.error(f"Error: Expected key {e} not found in model dictionary.")
-        return None, None, None, None
+        return None, None, None, None, None, None
     except Exception as e:
         st.error(f"Error analyzing model structure (ta_state/clause_weights): {e}")
-        return None, None, None, None
+        return None, None, None, None, None, None
 
     '''
     Block 3: Create the final DataFrame.
@@ -156,7 +401,7 @@ def load_model_data(model_path: Path):
     })
     
     st.success(f"Model {model_path.name} loaded successfully.")
-    return parameters, df_clauses, ta_state_reshaped, number_of_state_bits
+    return parameters, df_clauses, ta_state_reshaped, number_of_state_bits, hypervectors, hypervector_size
 
 # -------------------------------------------------------------------
 # HELPER FUNCTIONS
@@ -231,7 +476,7 @@ else:
     Load the data for the selected model.
     This uses the cached 'load_model_data' function.
     '''
-    params, df_clauses, ta_state_reshaped, number_of_state_bits = load_model_data(selected_model_path)
+    params, df_clauses, ta_state_reshaped, number_of_state_bits, hypervectors, hypervector_size = load_model_data(selected_model_path)
 
     '''
     Display the main dashboard only if the model data
@@ -365,9 +610,106 @@ else:
                     st.metric("State Bits", number_of_state_bits)
                     threshold = 2 ** (number_of_state_bits - 1)
                     st.metric("Inclusion Threshold", threshold)
+                    st.metric("Hypervector Size", hypervector_size)
                 
                 with col_data:
                     st.dataframe(df_literals, use_container_width=True, height=300)
+                
+                # -------------------------------------------------------
+                # HEX BOARD VISUALIZATION
+                # -------------------------------------------------------
+                st.subheader(f"🎮 Hex Game Interpretation for {selected_clause_id}")
+                
+                if hypervectors is not None:
+                    # Try to infer board size from model or use selector
+                    # Check if board size is in the filename
+                    board_match = re.search(r"board_(\d+)", selected_model_name)
+                    default_board_size = int(board_match.group(1)) if board_match else 3
+                    
+                    board_size = st.selectbox(
+                        "Select Hex Board Size:",
+                        options=[3, 4, 5, 6],
+                        index=[3, 4, 5, 6].index(default_board_size) if default_board_size in [3, 4, 5, 6] else 0,
+                        key=f"board_size_{selected_clause_id}"
+                    )
+                    
+                    # Interpret the literals in terms of Hex symbols
+                    interpretation = interpret_literals_for_hex(
+                        active_literals, 
+                        hypervectors, 
+                        hypervector_size,
+                        board_size
+                    )
+                    
+                    # Display interpretation summary
+                    st.info("""
+                    **How to read this visualization:**
+                    - 🟢 **Green cells**: The clause requires this symbol to be present
+                    - 🔴 **Red cells**: The clause requires this symbol to be absent (NOT)
+                    - 🟡 **Yellow cells**: Contradiction - both present AND absent requirements
+                    - ⬜ **Gray cells**: No specific constraint
+                    
+                    **Symbols:** X = Black (Player 1), O = White (Player 2), . = Empty
+                    """)
+                    
+                    col_hex, col_stats = st.columns([2, 1])
+                    
+                    with col_hex:
+                        # Create and display Hex board visualization
+                        fig_hex, legend_items = create_hex_board_visualization(
+                            board_size, 
+                            interpretation,
+                            title=f"Clause Pattern on {board_size}x{board_size} Hex Board"
+                        )
+                        st.plotly_chart(fig_hex, use_container_width=True)
+                        
+                        # Show legend
+                        if legend_items:
+                            st.write("**Clause Requirements:**")
+                            for item in legend_items:
+                                st.write(f"  {item}")
+                    
+                    with col_stats:
+                        # Show symbol match statistics
+                        st.write("**Symbol Match Analysis:**")
+                        fig_matches = create_symbol_match_visualization(interpretation)
+                        st.plotly_chart(fig_matches, use_container_width=True)
+                        
+                        # Show raw counts
+                        st.write("**Hypervector Bit Matches:**")
+                        for sym_idx, sym_name in enumerate(['X (Black)', 'O (White)', '. (Empty)']):
+                            pos = interpretation['positive_counts'].get(sym_idx, 0)
+                            neg = interpretation['negative_counts'].get(sym_idx, 0)
+                            st.write(f"  {sym_name}: +{pos} / -{neg}")
+                    
+                    # Show contradictions warning if any
+                    if interpretation['contradictions']:
+                        st.warning(f"""
+                        ⚠️ **Contradictions Detected!**
+                        
+                        The following symbols have both positive AND negative literals active:
+                        {', '.join([['X', 'O', '.'][i] for i in interpretation['contradictions']])}
+                        
+                        This might indicate:
+                        - Complex pattern matching behavior
+                        - The clause is matching multiple possible scenarios
+                        - Possible overfitting or noise in the learned pattern
+                        """)
+                    
+                    # Show detailed bit breakdown
+                    with st.expander("🔍 Detailed Bit Analysis"):
+                        st.write(f"**Positive Literal Bits (0 to {hypervector_size-1}):** Symbol should be PRESENT")
+                        st.write(f"Active positive bits: {interpretation['positive_bits'][:20]}{'...' if len(interpretation['positive_bits']) > 20 else ''}")
+                        
+                        st.write(f"**Negative Literal Bits ({hypervector_size} to {hypervector_size*2-1}):** Symbol should be ABSENT")
+                        st.write(f"Active negative bits: {interpretation['negative_bits'][:20]}{'...' if len(interpretation['negative_bits']) > 20 else ''}")
+                        
+                        st.write("**Hypervector Mapping:**")
+                        for sym_idx, sym_name in enumerate(['X', 'O', '.']):
+                            bits = hypervectors[sym_idx].tolist() if sym_idx < len(hypervectors) else []
+                            st.write(f"  {sym_name}: bits {bits}")
+                else:
+                    st.warning("Hypervectors not found in model. Cannot visualize Hex interpretation.")
                 
                 # Show additional visualization - histogram of literal indices
                 st.write("**Literal Index Distribution:**")
