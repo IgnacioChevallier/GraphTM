@@ -23,6 +23,46 @@ Defining the relative path to the models directory.
 MODEL_DIR = Path("hex-game/models")
 
 # -------------------------------------------------------------------
+# HELPER FUNCTIONS
+# -------------------------------------------------------------------
+def get_clause_literals(ta_state_row, number_of_state_bits=8):
+    '''
+    Extracts the active literals from a clause's TA state row.
+    The ta_state is stored as packed 32-bit integers, where each literal
+    uses 'number_of_state_bits' bits.
+    
+    Returns a list of tuples: (literal_index, ta_state_value)
+    Only returns literals where the TA state indicates inclusion (>= threshold).
+    '''
+    active_literals = []
+    literal_idx = 0
+    
+    # Calculate the threshold for inclusion (state >= 2^(bits-1) means included)
+    threshold = 2 ** (number_of_state_bits - 1)
+    mask = (1 << number_of_state_bits) - 1  # e.g., 0xFF for 8 bits
+    
+    # Number of literals packed into each 32-bit integer
+    bits_per_int = 32
+    literals_per_int = bits_per_int // number_of_state_bits
+    
+    for packed_value in ta_state_row:
+        # Convert to unsigned 32-bit integer
+        packed = int(packed_value) & 0xFFFFFFFF
+        
+        # Extract each literal's state from the packed value
+        for i in range(literals_per_int):
+            # Extract the state for this literal
+            state = (packed >> (i * number_of_state_bits)) & mask
+            
+            # Check if literal is included (state >= threshold)
+            if state >= threshold:
+                active_literals.append((literal_idx, state))
+            
+            literal_idx += 1
+    
+    return active_literals
+
+# -------------------------------------------------------------------
 # DATA LOADING FUNCTION
 # -------------------------------------------------------------------
 @st.cache_data
@@ -41,7 +81,7 @@ def load_model_data(model_path: Path):
             model_dict = pickle.load(f)
     except Exception as e:
         st.error(f"Error loading pickle file: {e}")
-        return None, None, None
+        return None, None, None, None
 
     '''
     Block 1: Extract simple model parameters.
@@ -67,6 +107,7 @@ def load_model_data(model_path: Path):
         num_clauses = model_dict['number_of_clauses']
         num_outputs = model_dict['number_of_outputs']
         max_literals_storage = model_dict['max_included_literals']
+        number_of_state_bits = model_dict.get('number_of_state_bits', 8)  # Default to 8
         
         '''
         Processing 'ta_state' to count literals per clause.
@@ -80,7 +121,13 @@ def load_model_data(model_path: Path):
             )
         ta_state_width = ta_state_flat.size // num_clauses
         ta_state_reshaped = ta_state_flat.reshape((num_clauses, ta_state_width))
-        literal_counts = np.count_nonzero(ta_state_reshaped, axis=1)
+        
+        # Count literals by properly unpacking the packed bit representation
+        literal_counts = []
+        for row in ta_state_reshaped:
+            literals = get_clause_literals(row, number_of_state_bits)
+            literal_counts.append(len(literals))
+        literal_counts = np.array(literal_counts)
 
         '''
         Processing 'clause_weights' to determine clause relevance.
@@ -93,10 +140,10 @@ def load_model_data(model_path: Path):
 
     except KeyError as e:
         st.error(f"Error: Expected key {e} not found in model dictionary.")
-        return None, None, None
+        return None, None, None, None
     except Exception as e:
         st.error(f"Error analyzing model structure (ta_state/clause_weights): {e}")
-        return None, None, None
+        return None, None, None, None
 
     '''
     Block 3: Create the final DataFrame.
@@ -109,7 +156,7 @@ def load_model_data(model_path: Path):
     })
     
     st.success(f"Model {model_path.name} loaded successfully.")
-    return parameters, df_clauses, ta_state_reshaped
+    return parameters, df_clauses, ta_state_reshaped, number_of_state_bits
 
 # -------------------------------------------------------------------
 # HELPER FUNCTIONS
@@ -137,18 +184,6 @@ def parse_accuracy_from_filename(filename: str):
         except ValueError:
             return None
     return None
-
-def get_clause_literals(ta_state_row):
-    '''
-    Extracts the active literals from a clause's TA state row.
-    Returns a list of tuples: (literal_index, ta_state_value)
-    Only returns literals where the TA state is non-zero (included in the clause).
-    '''
-    active_literals = []
-    for i, value in enumerate(ta_state_row):
-        if value != 0:
-            active_literals.append((i, int(value)))
-    return active_literals
 
 # -------------------------------------------------------------------
 # --- Streamlit App Layout ---
@@ -196,7 +231,7 @@ else:
     Load the data for the selected model.
     This uses the cached 'load_model_data' function.
     '''
-    params, df_clauses, ta_state_reshaped = load_model_data(selected_model_path)
+    params, df_clauses, ta_state_reshaped, number_of_state_bits = load_model_data(selected_model_path)
 
     '''
     Display the main dashboard only if the model data
@@ -317,7 +352,7 @@ else:
             
             # Get the literals for the selected clause
             clause_ta_state = ta_state_reshaped[selected_clause_idx]
-            active_literals = get_clause_literals(clause_ta_state)
+            active_literals = get_clause_literals(clause_ta_state, number_of_state_bits)
             
             if active_literals:
                 # Create a dataframe for the literals
@@ -326,8 +361,10 @@ else:
                 col_info, col_data = st.columns([1, 3])
                 
                 with col_info:
-                    st.metric("Total Literals", len(active_literals))
-                    st.metric("TA State Width", len(clause_ta_state))
+                    st.metric("Active Literals", len(active_literals))
+                    st.metric("State Bits", number_of_state_bits)
+                    threshold = 2 ** (number_of_state_bits - 1)
+                    st.metric("Inclusion Threshold", threshold)
                 
                 with col_data:
                     st.dataframe(df_literals, use_container_width=True, height=300)
