@@ -197,7 +197,7 @@ class graph_tm:
                 break
             if result_test > 99.9:
                 high_accuracy_hits += 1
-                if high_accuracy_hits >= 3:
+                if high_accuracy_hits >= 7:
                     break
 
             # Plateau detection: stop if no improvement for 5 consecutive epochs
@@ -206,7 +206,7 @@ class graph_tm:
                 no_improve_epochs = 0
             else:
                 no_improve_epochs += 1
-                if no_improve_epochs >= 10:
+                if no_improve_epochs >= 15:
                     print(f"Early stopping: no test accuracy improvement for {no_improve_epochs} epochs (best={best_test_accuracy:.2f}).")
                     break
         stop_time = time()
