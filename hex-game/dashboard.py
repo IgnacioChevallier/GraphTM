@@ -85,12 +85,14 @@ def interpret_literals_for_hex(active_literals, hypervectors, hypervector_size, 
     - 'negative_symbols': dict mapping symbol_idx -> list of matching literal indices  
     - 'contradictions': list of symbols that have both positive and negative evidence
     '''
-    num_symbols = len(HEX_SYMBOLS)
+    num_symbols = min(len(HEX_SYMBOLS), len(hypervectors))
     
-    # Build reverse mapping: hypervector_bit -> list of (symbol_idx, bit_position_in_symbol)
+    # Build reverse mapping: hypervector_bit -> list of symbol indices that use this bit
     bit_to_symbols = {}
-    for sym_idx, sym_hv in enumerate(hypervectors):
+    for sym_idx in range(num_symbols):
+        sym_hv = hypervectors[sym_idx]
         for bit_pos in sym_hv:
+            bit_pos = int(bit_pos)  # Ensure it's an integer
             if bit_pos not in bit_to_symbols:
                 bit_to_symbols[bit_pos] = []
             bit_to_symbols[bit_pos].append(sym_idx)
@@ -108,18 +110,20 @@ def interpret_literals_for_hex(active_literals, hypervectors, hypervector_size, 
             positive_bits.append(lit_idx)
             if lit_idx in bit_to_symbols:
                 for sym_idx in bit_to_symbols[lit_idx]:
-                    positive_counts[sym_idx] += 1
+                    if sym_idx < num_symbols:  # Safety check
+                        positive_counts[sym_idx] += 1
         else:
             # Negative literal
             actual_bit = lit_idx - hypervector_size
             negative_bits.append(actual_bit)
             if actual_bit in bit_to_symbols:
                 for sym_idx in bit_to_symbols[actual_bit]:
-                    negative_counts[sym_idx] += 1
+                    if sym_idx < num_symbols:  # Safety check
+                        negative_counts[sym_idx] += 1
     
     # Determine which symbols are strongly indicated
     hypervector_bits = hypervectors.shape[1] if len(hypervectors.shape) > 1 else 1
-    threshold = hypervector_bits // 2  # At least half the bits should match
+    threshold = max(1, hypervector_bits // 2)  # At least half the bits should match, minimum 1
     
     result = {
         'positive_symbols': [],  # Symbols that should be present
