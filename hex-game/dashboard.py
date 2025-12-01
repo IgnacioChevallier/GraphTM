@@ -41,7 +41,7 @@ def load_model_data(model_path: Path):
             model_dict = pickle.load(f)
     except Exception as e:
         st.error(f"Error loading pickle file: {e}")
-        return None, None
+        return None, None, None
 
     '''
     Block 1: Extract simple model parameters.
@@ -93,10 +93,10 @@ def load_model_data(model_path: Path):
 
     except KeyError as e:
         st.error(f"Error: Expected key {e} not found in model dictionary.")
-        return None, None
+        return None, None, None
     except Exception as e:
         st.error(f"Error analyzing model structure (ta_state/clause_weights): {e}")
-        return None, None
+        return None, None, None
 
     '''
     Block 3: Create the final DataFrame.
@@ -109,7 +109,7 @@ def load_model_data(model_path: Path):
     })
     
     st.success(f"Model {model_path.name} loaded successfully.")
-    return parameters, df_clauses
+    return parameters, df_clauses, ta_state_reshaped
 
 # -------------------------------------------------------------------
 # HELPER FUNCTIONS
@@ -137,6 +137,18 @@ def parse_accuracy_from_filename(filename: str):
         except ValueError:
             return None
     return None
+
+def get_clause_literals(ta_state_row):
+    '''
+    Extracts the active literals from a clause's TA state row.
+    Returns a list of tuples: (literal_index, ta_state_value)
+    Only returns literals where the TA state is non-zero (included in the clause).
+    '''
+    active_literals = []
+    for i, value in enumerate(ta_state_row):
+        if value != 0:
+            active_literals.append((i, int(value)))
+    return active_literals
 
 # -------------------------------------------------------------------
 # --- Streamlit App Layout ---
@@ -184,13 +196,13 @@ else:
     Load the data for the selected model.
     This uses the cached 'load_model_data' function.
     '''
-    params, df_clauses = load_model_data(selected_model_path)
+    params, df_clauses, ta_state_reshaped = load_model_data(selected_model_path)
 
     '''
     Display the main dashboard only if the model data
     was successfully loaded.
     '''
-    if params is not None and df_clauses is not None:
+    if params is not None and df_clauses is not None and ta_state_reshaped is not None:
 
         '''
         Display the extracted model parameters in the sidebar.
@@ -274,9 +286,64 @@ else:
 
         '''
         Displaying the raw data for the Top-N clauses in a table.
+        Click on a row to see the clause's literals.
         '''
         st.subheader(f"Raw Data for Top {top_n} Clauses")
-        st.dataframe(df_clauses_sorted.head(top_n))
+        st.info("💡 Click on a row to see the literals that make up the clause.")
+        
+        # Add clause index to track which clause is selected
+        df_display = df_clauses_sorted.head(top_n).copy()
+        df_display['clause_index'] = df_display['clause_id'].str.replace('Clause_', '').astype(int)
+        
+        # Display dataframe with selection enabled
+        selection = st.dataframe(
+            df_display[['clause_id', 'literal_count', 'relevance_score']],
+            use_container_width=True,
+            selection_mode="single-row",
+            on_select="rerun"
+        )
+        
+        '''
+        Section 3: Clause Literal Details
+        When a clause is selected, display its literals.
+        '''
+        if selection and selection.selection and selection.selection.rows:
+            selected_row_idx = selection.selection.rows[0]
+            selected_clause_row = df_display.iloc[selected_row_idx]
+            selected_clause_idx = int(selected_clause_row['clause_index'])
+            selected_clause_id = selected_clause_row['clause_id']
+            
+            st.subheader(f"📋 Literals for {selected_clause_id}")
+            
+            # Get the literals for the selected clause
+            clause_ta_state = ta_state_reshaped[selected_clause_idx]
+            active_literals = get_clause_literals(clause_ta_state)
+            
+            if active_literals:
+                # Create a dataframe for the literals
+                df_literals = pd.DataFrame(active_literals, columns=['Literal Index', 'TA State Value'])
+                
+                col_info, col_data = st.columns([1, 3])
+                
+                with col_info:
+                    st.metric("Total Literals", len(active_literals))
+                    st.metric("TA State Width", len(clause_ta_state))
+                
+                with col_data:
+                    st.dataframe(df_literals, use_container_width=True, height=300)
+                
+                # Show additional visualization - histogram of literal indices
+                st.write("**Literal Index Distribution:**")
+                fig_literals = px.histogram(
+                    df_literals,
+                    x='Literal Index',
+                    nbins=min(50, len(active_literals)),
+                    title=f"Distribution of Active Literals in {selected_clause_id}"
+                )
+                fig_literals.update_layout(bargap=0.1)
+                st.plotly_chart(fig_literals, use_container_width=True)
+            else:
+                st.warning(f"No active literals found in {selected_clause_id}.")
 
     else:
         st.error(f"Dashboard could not be loaded for {selected_model_name}.")
