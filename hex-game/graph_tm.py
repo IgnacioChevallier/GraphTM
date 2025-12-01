@@ -39,13 +39,14 @@ class graph_tm:
         '''
         Creating the graphs for testing
         '''
-        self.graphs_test = Graphs(
-            self.args.number_of_graphs_test,
-            symbols=self.args.symbols,
-            hypervector_size=self.args.hypervector_size,
-            hypervector_bits=self.args.hypervector_bits,
-            one_hot_encoding=self.args.one_hot_encoding
-        )
+        self.graphs_test = Graphs(self.args.number_of_graphs_test, init_with=self.graphs_train)
+        # self.graphs_test = Graphs(
+        #     self.args.number_of_graphs_test,
+        #     symbols=self.args.symbols,
+        #     hypervector_size=self.args.hypervector_size,
+        #     hypervector_bits=self.args.hypervector_bits,
+        #     one_hot_encoding=self.args.one_hot_encoding
+        # )
 
 
     '''
