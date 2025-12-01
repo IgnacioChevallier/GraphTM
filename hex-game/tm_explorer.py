@@ -134,11 +134,11 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
     results_train, results_test, time_taken = tm_instance.run()
     if getattr(args, "save_model", False) and results_test:
         data_manager.save_model_checkpoint(tm_instance.tm, results_test[-1], args=args)
-    board_size = int(len(node_names) ** 0.5)
+
     print("Training Results:", results_train[-1])
     print("Testing Results:", results_test[-1])
     print("Time Taken:", time_taken)
-    print(f"Board Size: {board_size} x {board_size}")
+    print(f"Board Size: {args.board_size} x {args.board_size}")
     print("Number of clauses:", tm_instance.tm.number_of_clauses)
 
 '''
