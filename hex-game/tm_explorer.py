@@ -11,8 +11,8 @@ Overall arguments, that influence the final outcome of the GraphTM.
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
     parser.add_argument("--board_size", default=3, type=int) # Hex board size (3x3 is standard)
-    parser.add_argument("--epochs", default=3, type=int) # Total number of times the model will iterate over the entire training dataset
-    parser.add_argument("--number-of-clauses", default=60, type=int) # Higher number = More complexity in the learned patters
+    parser.add_argument("--epochs", default=10, type=int) # Total number of times the model will iterate over the entire training dataset
+    parser.add_argument("--number-of-clauses", default=100, type=int) # Higher number = More complexity in the learned patters
     parser.add_argument("--T", default=1, type=int) # Threshold for votes a clause needs
     parser.add_argument("--s", default=1.1, type=float) # Theshold to include literals
     parser.add_argument("--number-of-state-bits", default=8, type=int) # Depth 2^8 states
@@ -46,13 +46,14 @@ Return the updated args.
 '''
 def new_exploration_args(current_index, permutate_exploration_params: bool = True):
     exploration_options = {
-        "number_of_clauses": [10, 100, 500, 1000, 2000, 5000, 10000, 20000],
-        "s": [0.5, 2.0, 5.0, 10.0, 15.0],
-        "T": [1000, 5000, 10000, 20000],
-        "number_of_state_bits": [4, 6, 8, 10],
-        "number_of_graphs_train": [5000, 10000, 20000, 40000],
-        "epochs": [50], # for now keeping epochs constant
-        "edge_connections": ["full", "neighbor_1", "neighbor_2"],
+        "number_of_clauses": [100],
+        "s": [1.1],
+        "T": [1],
+        "number_of_state_bits": [8],
+        "number_of_graphs_train": [10000],
+        "epochs": [100],
+        "edge_connections": ["neighbor_1"],
+        "board_size": [4, 5, 6, 7, 8, 9, 10, 11]
     }
 
     '''
@@ -80,6 +81,22 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
 
     return args
 
+def print_exploration_params(args):
+    fields_to_print = [
+        "board_size",
+        "epochs",
+        "number_of_clauses",
+        "number_of_graphs_train",
+        "number_of_graphs_test",
+        "edge_connections"
+    ]
+
+    print("Exploration Parameters:")
+    for field in fields_to_print:
+        value = getattr(args, field)
+        print(f"  {field} = {value}")
+
+
 '''
 Run multiple explorations of the Graph Tsetlin Machine with different parameters.
 Save the results in "data/exploration_results" after all explorations are done.
@@ -88,7 +105,8 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
     total_exploration_results = []
 
     for i in range(total_explorations):
-        args = new_exploration_args(starting_exploration_index + i)
+        args = new_exploration_args(starting_exploration_index + i, False)
+        print_exploration_params(args)
         tm_instance = graph_tm.graph_tm(
             args,
             number_of_nodes,
@@ -98,10 +116,11 @@ def explore_tms(starting_exploration_index, total_explorations, number_of_nodes,
             edge_connections=args.edge_connections
         )
         results_train, results_test, time_taken = tm_instance.run()
-        # print("Exploration Parameters:", args)
-        # print("Training Results:", results_train[-1])
-        # print("Testing Results:", results_test[-1])
-        # print("Time Taken:", time_taken)
+        print("Training Results:", results_train[-1])
+        print("Testing Results:", results_test[-1])
+        print("Time Taken:", time_taken)
+        print(f"Board Size: {args.board_size} x {args.board_size}")
+        print("Number of clauses:", tm_instance.tm.number_of_clauses)
 
         results_payload = {
             "args": args,
@@ -131,6 +150,7 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
         games_test,
         edge_connections=args.edge_connections
     )
+    print_exploration_params(args)
     results_train, results_test, time_taken = tm_instance.run()
     if getattr(args, "save_model", False) and results_test:
         data_manager.save_model_checkpoint(tm_instance.tm, results_test[-1], args=args)
@@ -144,7 +164,7 @@ def run_single_tm(args, number_of_nodes, node_names, games_train, games_test):
 '''
 Main Function to start either single run or exploration.
 '''
-def main(single_run: bool = True):
+def main(single_run: bool = False):
     number_of_nodes, node_names, games_train, games_test = setup_game.setup_game(default_args())
 
     if single_run:

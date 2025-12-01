@@ -179,6 +179,9 @@ class graph_tm:
         results_train = []
         results_test = []
         start_time = time()
+        high_accuracy_hits = 0  # Counts test accuracy > 99.9%
+        best_test_accuracy = -1.0
+        no_improve_epochs = 0  # Consecutive epochs without improvement
         for i in range(self.args.epochs):
             self.tm.fit(self.graphs_train, self.Y_train, epochs=1, incremental=True)
 
@@ -188,7 +191,24 @@ class graph_tm:
             result_train = 100*(self.tm.predict(self.graphs_train) == self.Y_train).mean()
             results_train.append(result_train)
 
-            print(f"[Epoch {i:03d}]  Training Accuracy: {result_train:.2f}  |  Test Accuracy: {result_test:.2f}")
+            print(f"[Epoch {i:03d}]  train_acc: {result_train:.2f}  |  test_acc: {result_test:.2f} | time: {time() - start_time:.2f}s | high_acc: {high_accuracy_hits} | no_improve: {no_improve_epochs}")
+            # Early stopping conditions
+            if result_test == 100.0:
+                break
+            if result_test > 99.9:
+                high_accuracy_hits += 1
+                if high_accuracy_hits >= 3:
+                    break
+
+            # Plateau detection: stop if no improvement for 5 consecutive epochs
+            if result_test > best_test_accuracy + 1e-9:  # epsilon guards float comparisons
+                best_test_accuracy = result_test
+                no_improve_epochs = 0
+            else:
+                no_improve_epochs += 1
+                if no_improve_epochs >= 10:
+                    print(f"Early stopping: no test accuracy improvement for {no_improve_epochs} epochs (best={best_test_accuracy:.2f}).")
+                    break
         stop_time = time()
         time_taken = stop_time - start_time
         return results_train, results_test, time_taken
