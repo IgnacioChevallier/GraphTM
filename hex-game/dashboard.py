@@ -306,7 +306,7 @@ else:
                 title="Distribution of Literals per Clause"
             )
             fig_hist.update_layout(bargap=0.1, xaxis_title="Number of Literals")
-            st.plotly_chart(fig_hist, use_container_width=True)
+            st.plotly_chart(fig_hist, width='stretch')
 
         with col2:
             '''

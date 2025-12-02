@@ -38,21 +38,14 @@ class graph_tm:
         '''
         Creating the graphs for testing
         '''
-        self.graphs_test = Graphs(
-            self.args.number_of_graphs_test,
-            #node_names=node_names,
-            symbols=self.args.symbols,
-            hypervector_size=self.args.hypervector_size,
-            hypervector_bits=self.args.hypervector_bits,
-            one_hot_encoding=self.args.one_hot_encoding
-        )
-        # Füge diesen Code in graph_tm.py, direkt NACH der Initialisierung der Graphs-Objekte ein.
-        print("\n--- Hypervektor-Kodierung für die aktuelle Ausführung ---")
-        print("Symbol ID (Index):", self.graphs_train.symbol_id)
-        print("Hypervektoren (Bit-Indizes):")
-        # Das Array hat die Form: (Anzahl Symbole, Hypervector_bits=2)
-        print(self.graphs_train.hypervectors) 
-        print("----------------------------------------------------------")
+        self.graphs_test = Graphs(self.args.number_of_graphs_test, init_with=self.graphs_train)
+        # self.graphs_test = Graphs(
+        #     self.args.number_of_graphs_test,
+        #     symbols=self.args.symbols,
+        #     hypervector_size=self.args.hypervector_size,
+        #     hypervector_bits=self.args.hypervector_bits,
+        #     one_hot_encoding=self.args.one_hot_encoding
+        # )
 
 
     '''
@@ -288,6 +281,9 @@ class graph_tm:
         results_train = []
         results_test = []
         start_time = time()
+        high_accuracy_hits = 0  # Counts test accuracy > 99.9%
+        best_test_accuracy = -1.0
+        no_improve_epochs = 0  # Consecutive epochs without improvement
         for i in range(self.args.epochs):
             self.tm.fit(self.graphs_train, self.Y_train, epochs=1, incremental=True)
 
@@ -297,7 +293,24 @@ class graph_tm:
             result_train = 100*(self.tm.predict(self.graphs_train) == self.Y_train).mean()
             results_train.append(result_train)
 
-            print(f"[Epoch {i:03d}]  Training Accuracy: {result_train:.2f}  |  Test Accuracy: {result_test:.2f}")
+            print(f"[Epoch {i:03d}]  train_acc: {result_train:.2f}  |  test_acc: {result_test:.2f} | time: {time() - start_time:.2f}s | high_acc: {high_accuracy_hits} | no_improve: {no_improve_epochs}")
+            # Early stopping conditions
+            if result_test == 100.0:
+                break
+            if result_test > 99.9:
+                high_accuracy_hits += 1
+                if high_accuracy_hits >= 7:
+                    break
+
+            # Plateau detection: stop if no improvement for 5 consecutive epochs
+            if result_test > best_test_accuracy + 1e-9:  # epsilon guards float comparisons
+                best_test_accuracy = result_test
+                no_improve_epochs = 0
+            else:
+                no_improve_epochs += 1
+                if no_improve_epochs >= 15:
+                    print(f"Early stopping: no test accuracy improvement for {no_improve_epochs} epochs (best={best_test_accuracy:.2f}).")
+                    break
         stop_time = time()
         time_taken = stop_time - start_time
         return results_train, results_test, time_taken

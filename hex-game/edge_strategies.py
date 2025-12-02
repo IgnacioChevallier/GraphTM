@@ -1,5 +1,6 @@
 from typing import Dict, Iterable, List, Tuple
 
+# Dict of node name mapped to list of (neighbor node name, edge label)
 NeighborMap = Dict[str, List[Tuple[str, str]]]
 
 
