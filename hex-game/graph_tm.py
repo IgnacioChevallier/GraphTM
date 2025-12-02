@@ -246,14 +246,14 @@ class graph_tm:
         if self.args.edge_connections == "full":
             self.create_graphs_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
             self.create_graphs_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
-        elif self.args.edge_connections == "neighbor":
+        elif self.args.edge_connections == "neighbor_1":
             self.create_graphs_neighbor_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
             self.create_graphs_neighbor_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
         elif self.args.edge_connections == "neighbor_2":
             self.create_graphs_neighbor_2_edges(self.graphs_train, self.args.number_of_graphs_train, self.number_of_nodes)
             self.create_graphs_neighbor_2_edges(self.graphs_test, self.args.number_of_graphs_test, self.number_of_nodes)
         else:
-            raise ValueError(f"Unknown edge_type: {self.args.edge_type}. Supported types are 'full' and 'neighbor'.")
+            raise ValueError(f"Unknown edge_type: {self.args.edge_type}. Supported types are 'full' and 'neighbor_1' and 'neighbor_2'.")
         '''
         Filling the graphs with the board game data.
         '''

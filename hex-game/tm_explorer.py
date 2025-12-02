@@ -10,7 +10,7 @@ Overall arguments, that influence the final outcome of the GraphTM.
 '''
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--board_size", default=10, type=int) # Hex board size (3x3 is standard)
+    parser.add_argument("--board_size", default=3, type=int) # Hex board size (3x3 is standard)
     parser.add_argument("--epochs", default=100, type=int) # Total number of times the model will iterate over the entire training dataset
     parser.add_argument("--number-of-clauses", default=1000, type=int) # Higher number = More complexity in the learned patters
     parser.add_argument("--T", default=10, type=int) # Threshold for votes a clause needs
