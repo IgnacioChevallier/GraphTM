@@ -112,12 +112,18 @@ def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, args
 
 
 def _resolve_model_path(model_selector: str) -> Path:
-    """ Resolve a model path by filename, glob, or special token 'latest'. """
+    """Resolve a model path by filename, glob, substring, absolute path, or 'latest'."""
     candidate = MODELS_DIR / model_selector
     if candidate.exists():
         return candidate
 
-    raise FileNotFoundError(f"Model file not found for selector: {model_selector}")
+
+    # Helpful error: list available
+    available = sorted([p.name for p in MODELS_DIR.glob('*.pkl')])
+    raise FileNotFoundError(
+        f"Model file not found for selector: {model_selector}. Available in {MODELS_DIR}:\n" +
+        "\n".join(available)
+    )
 
 
 def load_args_from_model(model_selector: str):
@@ -139,32 +145,6 @@ def load_args_from_model(model_selector: str):
             args_dict = dict(snapshot)
         else:
             args_dict = None
-
-    # Fallback: try top-level 'args'
-    if args_dict is None:
-        top_args = state.get("args")
-        if hasattr(top_args, "__dict__"):
-            args_dict = dict(top_args.__dict__)
-        elif isinstance(top_args, dict):
-            args_dict = dict(top_args)
-
-    # As a final fallback, parse tokens from filename
-    if args_dict is None:
-        # Expected patterns, e.g.: tm_model_board_3_acc_68_date_2025_11_30_12_34_56.pkl
-        # or: acc_90_board_3_date_2025_12_02_15_52_14.pkl
-        name = model_path.name
-        board = None
-        acc = None
-        m_board = re.search(r"board[_-](\d+)", name)
-        if m_board:
-            board = int(m_board.group(1))
-        m_acc = re.search(r"acc[_-](\d+)", name)
-        if m_acc:
-            acc = int(m_acc.group(1))
-        args_dict = {}
-        if board is not None:
-            args_dict["board_size"] = board
-        # Note: accuracy isn't part of runtime args, so we don't set it.
 
     if args_dict is None:
         raise ValueError("Saved model does not contain parsable arguments.")

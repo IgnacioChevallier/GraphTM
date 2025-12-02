@@ -168,10 +168,9 @@ def run_single_tm(args):
 '''
 Main Function to start either single run or exploration.
 '''
-def main(single_run: bool = True, load_model: bool = False):
-
+def main(single_run: bool = True, load_model: bool = True):
     if load_model:
-        run_single_tm(data_manager.load_args_from_model("acc_100_board_3_date_2025_12_01_17_37_08.pkl"))
+        run_single_tm(data_manager.load_args_from_model("acc_100_board_3_date_2025_12_02_16_04_10.pkl"))
         return
 
     if single_run:
