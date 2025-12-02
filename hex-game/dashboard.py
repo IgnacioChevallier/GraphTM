@@ -95,7 +95,7 @@ def load_model_data(model_path: Path, board_size: int):
              parameters[key] = value
 
     '''
-    Block 2: Extract and process clause data.
+    Block 2: Extract and process clause data (KORRIGIERTE Logik).
     '''
     try:
         '''
@@ -103,13 +103,19 @@ def load_model_data(model_path: Path, board_size: int):
         '''
         num_clauses = model_dict['number_of_clauses']
         num_outputs = model_dict['number_of_outputs']
-        # max_literals_storage = model_dict['max_included_literals'] 
         
-        hypervector_size = 32
+        # NEU: Die Gesamtanzahl der Literale (Tsetlin Automata) für die Oberflächenschicht
+        total_literals_surface = model_dict.get('number_of_literals', None)
+        if total_literals_surface is None:
+            # Fallback, falls 'number_of_literals' fehlt, obwohl es enthalten sein sollte
+            st.error("Model state is missing 'number_of_literals'. Cannot decode correctly.")
+            return None, None
+
         number_of_state_bits = model_dict['number_of_state_bits']
+        S = number_of_state_bits # Alias für Klarheit
         
         '''
-        Processing 'ta_state' to count literals per clause.
+        Processing 'ta_state' to get the state data structure.
         '''
         ta_state_flat = model_dict['ta_state']
         if ta_state_flat.size % num_clauses != 0:
@@ -117,9 +123,14 @@ def load_model_data(model_path: Path, board_size: int):
                 f"ta_state size {ta_state_flat.size} not divisible by number_of_clauses={num_clauses}"
             )
         ta_state_width = ta_state_flat.size // num_clauses
-        ta_state_reshaped = ta_state_flat.reshape((num_clauses, ta_state_width))
-        literal_counts = np.count_nonzero(ta_state_reshaped, axis=1)
-
+        clause_states = ta_state_flat.reshape((num_clauses, ta_state_width))
+        
+        # ENTFERNT: Die inkorrekte np.count_nonzero-Zählung.
+        
+        # NEU: Listen zur Speicherung der Ergebnisse
+        decoded_clauses_list = []
+        literal_counts = []
+        
         '''
         Processing 'clause_weights' to determine clause relevance.
         '''
@@ -128,48 +139,62 @@ def load_model_data(model_path: Path, board_size: int):
         relevance_scores = clause_weights_reshaped[:, 0] # Use Output 0
         
         node_names = generate_hex_node_names(board_size)
-        H = hypervector_size 
-        S = number_of_state_bits
+        H = model_dict.get('message_size', 32) # Hypervector size
         num_nodes = len(node_names)
-        
-        total_node_literals_configured = 2 * num_nodes * H 
-        
-        decoded_clauses_list = []
-        clause_states = ta_state_reshaped
+        literal_per_node = 2 * H # 2 * HypervectorSize (positiv + negativ)
+
 
         for clause_idx in range(num_clauses):
             literals = []
+            current_literal_count = 0
             
-            for k in range(total_node_literals_configured):
+            # Iteration über alle Tsetlin-Automaten der Oberflächenschicht
+            for k in range(total_literals_surface):
                 
-                block_idx = k // 32
-                action_bit_index_2d = block_idx * S + (S - 1)
+                # JEDER TA hat S Zustandsbits. Wir interessieren uns für das Aktionsbit (Index S-1).
+                # Die Zustände sind pro Zustandsbit über alle TAs des Chunks verschachtelt.
                 
-                if action_bit_index_2d >= ta_state_width:
+                # Berechne den Index im 32-Bit-Block-Array:
+                # 1. k // 32 ist der Index des 32-TA-Chunks.
+                # 2. Wir wählen das letzte Zustandsbit (S - 1).
+                action_bit_index = (k // 32) * S + (S - 1)
+                
+                if action_bit_index >= ta_state_width:
+                    # Sicherstellung, dass wir uns nicht außerhalb der Array-Grenzen bewegen
+                    # (Sollte bei korrekten Metadaten nicht passieren)
                     break 
 
-                action_bit_value = clause_states[clause_idx, action_bit_index_2d]
+                action_bit_value = clause_states[clause_idx, action_bit_index]
                 bit_in_block = k % 32
                 
+                # Prüfen, ob das Aktionsbit (der höchste Zustandsbit) gesetzt ist.
+                # Dies bedeutet, dass das Literal aufgenommen ("included") wurde.
                 if (action_bit_value & (1 << bit_in_block)) > 0:
-                    node_idx = k // (2 * H) 
+                    current_literal_count += 1
+                    
+                    # --- Dekodierung von Literal k in einen String ---
+                    node_idx = k // literal_per_node
                     
                     if node_idx >= num_nodes:
-                        break
+                        break # Sicherheit
 
                     node_name = node_names[node_idx]
-                    literal_set_offset = k % (2 * H)
+                    literal_set_offset = k % literal_per_node # 0 to 2*H - 1
 
                     if literal_set_offset < H:
+                        # Positives Literal: Node.x{feature}
                         feature_idx = literal_set_offset
                         literal_str = f"{node_name}.x{feature_idx}"
                     else:
+                        # Negatives Literal: ~Node.x{feature}
                         feature_idx = literal_set_offset - H
                         literal_str = f"~{node_name}.x{feature_idx}" 
                         
                     literals.append(literal_str)
+                    # --- Ende Dekodierung ---
             
             decoded_clauses_list.append(" AND ".join(literals) if literals else "(Empty Clause)")
+            literal_counts.append(current_literal_count)
 
 
     except KeyError as e:
@@ -177,21 +202,24 @@ def load_model_data(model_path: Path, board_size: int):
         return None, None
     except Exception as e:
         st.error(f"Error analyzing model structure (ta_state/clause_weights): {e}")
+        st.code(f"Detailed Error: {e}") # Zusätzlicher Detail-Output
         return None, None
 
     '''
     Block 3: Create the final DataFrame.
     '''
+    # Konvertieren Sie die Liste der gezählten Literale in ein Array für den DataFrame
+    literal_counts_np = np.array(literal_counts)
+
     df_clauses = pd.DataFrame({
         "clause_id": [f"Clause_{i}" for i in range(num_clauses)],
-        "literal_count": literal_counts,
+        "literal_count": literal_counts_np,
         "relevance_score": relevance_scores,
         "decoded_literals": decoded_clauses_list
     })
     
     st.success(f"Model {model_path.name} loaded successfully.")
     return parameters, df_clauses
-
 
 
 '''
