@@ -12,15 +12,14 @@ def default_args(**kwargs):
     parser = argparse.ArgumentParser()
     parser.add_argument("--board_size", default=3, type=int) # Hex board size (3x3 is standard)
     parser.add_argument("--epochs", default=100, type=int) # Total number of times the model will iterate over the entire training dataset
-    parser.add_argument("--number-of-clauses", default=1000, type=int) # Higher number = More complexity in the learned patters
-    parser.add_argument("--T", default=10, type=int) # Threshold for votes a clause needs
-    parser.add_argument("--s", default=5.0, type=float) # Theshold to include literals
+    parser.add_argument("--number-of-clauses", default=100, type=int) # Higher number = More complexity in the learned patters
+    parser.add_argument("--T", default=1, type=int) # Threshold for votes a clause needs
+    parser.add_argument("--s", default=1.1, type=float) # Theshold to include literals
     parser.add_argument("--number-of-state-bits", default=8, type=int) # Depth 2^8 states
     parser.add_argument("--depth", default=2, type=int) # Message depth btw. nodes
     parser.add_argument("--symbols", nargs="+", default=['X', 'O', '.']) #Graph Symbols: X_Player1, O_Player2, ._Empty
     parser.add_argument("--hypervector-size", default=32, type=int) # Based on the number of symbols
     parser.add_argument("--hypervector-bits", default=2, type=int) # Bits represent the symbols (2 can represent 4 symbols)
-    # Would not change, at least no change in most examples
     parser.add_argument("--message-size", default=256, type=int)
     parser.add_argument("--message-bits", default=2, type=int)
     parser.add_argument('--double-hashing', dest='double_hashing', default=False, action='store_true')
@@ -31,7 +30,7 @@ def default_args(**kwargs):
     parser.add_argument("--max-included-literals", default=10, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=10000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=10000, type=int) # Number of graphs used for testing
-    parser.add_argument("--edge-connections", default="neighbor_1", type=str,
+    parser.add_argument("--edge-connections", default="full", type=str,
                     help="Type of edge connections: full, neighbor_1, or neighbor_2")
 
     args = parser.parse_args()
@@ -53,7 +52,7 @@ def new_exploration_args(current_index, permutate_exploration_params: bool = Tru
         "number_of_graphs_train": [5000, 10000, 20000],
         "epochs": [100],
         "edge_connections": ["neighbor_1"],
-        "board_size": [5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 20]
+        "board_size": [5, 6, 7, 8]
     }
 
     '''
