@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #ifndef BOARD_DIM
     #define BOARD_DIM 11
@@ -175,29 +177,60 @@ void hg_append_game_json(struct hex_game *hg, int winner, const char *file_path)
     fclose(f);
 }
 
-int main() {
-    struct hex_game hg;
-    char output_path[256];
-    snprintf(output_path, sizeof(output_path), "../data/train/games_%dx%d.jsonl", BOARD_DIM, BOARD_DIM);
+int main(int argc, char **argv) {
+	struct hex_game hg;
 
-	int winner = -1;
+	// Robust RNG seeding (avoid identical boards across runs)
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	unsigned int seed = (unsigned int)(ts.tv_sec ^ ts.tv_nsec ^ getpid());
+	srand(seed);
 
-	for (int game = 0; game < 10000; ++game) {
+	// Determine how many games to generate
+	int games_amount = 10000;
+	if (argc >= 2) games_amount = atoi(argv[1]);
+	if (argc >= 3) games_amount  = atoi(argv[2]);
+
+	// Output paths for train and test
+	char train_path[256];
+	char test_path[256];
+	snprintf(train_path, sizeof(train_path), "../data/train/games_%dx%d.jsonl", BOARD_DIM, BOARD_DIM);
+	snprintf(test_path, sizeof(test_path),   "../data/test/games_%dx%d.jsonl",  BOARD_DIM, BOARD_DIM);
+
+	// Generate training games
+	for (int game = 0; game < games_amount; ++game) {
 		hg_init(&hg);
-
+		int winner = -1; // reset per game
 		int player = 0;
 		while (!hg_full_board(&hg)) {
 			int position = hg_place_piece_randomly(&hg, player);
-			
 			if (hg_winner(&hg, player, position)) {
 				winner = player;
 				break;
 			}
-
 			player = 1 - player;
 		}
-
-        // Append to dataset file
-        hg_append_game_json(&hg, winner, output_path);
+		hg_append_game_json(&hg, winner, train_path);
 	}
+
+	// To further decorrelate sequences between train/test, perturb RNG
+	srand(seed ^ 0x9E3779B9u); // different seed derivation
+
+	// Generate test games
+	for (int game = 0; game < games_amount; ++game) {
+		hg_init(&hg);
+		int winner = -1; // reset per game
+		int player = 0;
+		while (!hg_full_board(&hg)) {
+			int position = hg_place_piece_randomly(&hg, player);
+			if (hg_winner(&hg, player, position)) {
+				winner = player;
+				break;
+			}
+			player = 1 - player;
+		}
+		hg_append_game_json(&hg, winner, test_path);
+	}
+
+	return 0;
 }

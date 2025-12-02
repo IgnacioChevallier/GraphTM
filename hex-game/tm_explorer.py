@@ -10,7 +10,7 @@ Overall arguments, that influence the final outcome of the GraphTM.
 '''
 def default_args(**kwargs):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--board_size", default=3, type=int) # Hex board size (3x3 is standard)
+    parser.add_argument("--board_size", default=4, type=int) # Hex board size (3x3 is standard)
     parser.add_argument("--epochs", default=100, type=int) # Total number of times the model will iterate over the entire training dataset
     parser.add_argument("--number-of-clauses", default=100, type=int) # Higher number = More complexity in the learned patters
     parser.add_argument("--T", default=1, type=int) # Threshold for votes a clause needs
@@ -30,7 +30,7 @@ def default_args(**kwargs):
     parser.add_argument("--max-included-literals", default=10, type=int) # Max number of features learned per clause
     parser.add_argument("--number_of_graphs_train", default=10000, type=int) # Number of graphs used for training
     parser.add_argument("--number_of_graphs_test", default=10000, type=int) # Number of graphs used for testing
-    parser.add_argument("--edge-connections", default="full", type=str,
+    parser.add_argument("--edge-connections", default="neighbor_1", type=str,
                     help="Type of edge connections: full, neighbor_1, or neighbor_2")
 
     args = parser.parse_args()
@@ -168,7 +168,12 @@ def run_single_tm(args):
 '''
 Main Function to start either single run or exploration.
 '''
-def main(single_run: bool = True):
+def main(single_run: bool = True, load_model: bool = False):
+
+    if load_model:
+        run_single_tm(data_manager.load_args_from_model("acc_100_board_3_date_2025_12_01_17_37_08.pkl"))
+        return
+
     if single_run:
         run_single_tm(default_args())
     else:

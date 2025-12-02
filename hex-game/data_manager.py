@@ -2,6 +2,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 import json
 import pickle
+import re
+import argparse
 
 FILE_PATH_EXPLORATION = Path(__file__).parent / 'data' / 'exploration_results'
 MODELS_DIR = Path(__file__).parent / 'models'
@@ -68,7 +70,7 @@ def load_exploration_results():
             return []
 
 
-def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, prefix: str = "tm_model", args=None):
+def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, args=None):
     """
     Persist the trained TM using pickle so that the dashboard can inspect it.
     """
@@ -87,7 +89,7 @@ def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, pref
     if args is not None:
         board_token = getattr(args, "board_size", None) or getattr(args, "BOARD_SIZE", None)
     board_fragment = f"_board_{board_token}" if board_token is not None else ""
-    filename = f"{prefix}_acc_{accuracy_token}{board_fragment}_date_{timestamp}.pkl"
+    filename = f"acc_{accuracy_token}{board_fragment}_date_{timestamp}.pkl"
     target_path = model_dir / filename
 
     state_dict = tm.save("")
@@ -107,4 +109,67 @@ def save_model_checkpoint(tm, test_accuracy, model_dir: Path | None = None, pref
         pickle.dump(state_dict, fh)
 
     return target_path
+
+
+def _resolve_model_path(model_selector: str) -> Path:
+    """ Resolve a model path by filename, glob, or special token 'latest'. """
+    candidate = MODELS_DIR / model_selector
+    if candidate.exists():
+        return candidate
+
+    raise FileNotFoundError(f"Model file not found for selector: {model_selector}")
+
+
+def load_args_from_model(model_selector: str):
+    """Load an argparse.Namespace of saved arguments from a model pickle. """
+    model_path = _resolve_model_path(model_selector)
+    with open(model_path, "rb") as fh:
+        state = pickle.load(fh)
+
+    # Try to fetch the args snapshot from metadata
+    meta = state.get("metadata", {})
+    snapshot = meta.get("args_snapshot")
+
+    args_dict: dict | None = None
+    if snapshot is not None:
+        # Normalize to dict
+        if hasattr(snapshot, "__dict__"):
+            args_dict = dict(snapshot.__dict__)
+        elif isinstance(snapshot, dict):
+            args_dict = dict(snapshot)
+        else:
+            args_dict = None
+
+    # Fallback: try top-level 'args'
+    if args_dict is None:
+        top_args = state.get("args")
+        if hasattr(top_args, "__dict__"):
+            args_dict = dict(top_args.__dict__)
+        elif isinstance(top_args, dict):
+            args_dict = dict(top_args)
+
+    # As a final fallback, parse tokens from filename
+    if args_dict is None:
+        # Expected patterns, e.g.: tm_model_board_3_acc_68_date_2025_11_30_12_34_56.pkl
+        # or: acc_90_board_3_date_2025_12_02_15_52_14.pkl
+        name = model_path.name
+        board = None
+        acc = None
+        m_board = re.search(r"board[_-](\d+)", name)
+        if m_board:
+            board = int(m_board.group(1))
+        m_acc = re.search(r"acc[_-](\d+)", name)
+        if m_acc:
+            acc = int(m_acc.group(1))
+        args_dict = {}
+        if board is not None:
+            args_dict["board_size"] = board
+        # Note: accuracy isn't part of runtime args, so we don't set it.
+
+    if args_dict is None:
+        raise ValueError("Saved model does not contain parsable arguments.")
+
+    # Return as argparse.Namespace
+    print(f"Loaded args from model: {model_path.name}")
+    return argparse.Namespace(**args_dict)
         
