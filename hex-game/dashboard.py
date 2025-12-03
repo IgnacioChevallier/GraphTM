@@ -144,8 +144,7 @@ def load_model_data(model_path: Path, board_size: int):
             current_literal_count = 0
             
             for k in range(total_literals_surface):
-                                action_bit_index = (k // 32) * S + (S - 1)
-                
+                action_bit_index = (k // 32) * S + (S - 1)
                 if action_bit_index >= ta_state_width:
                     break 
 
