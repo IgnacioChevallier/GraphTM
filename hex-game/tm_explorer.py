@@ -32,6 +32,8 @@ def default_args(**kwargs):
     parser.add_argument("--number_of_graphs_test", default=10000, type=int) # Number of graphs used for testing
     parser.add_argument("--edge-connections", default="neighbor_1", type=str,
                     help="Type of edge connections: full, neighbor_1, or neighbor_2")
+    parser.add_argument('--use-positions', dest='use_positions', default=False, action='store_true',
+                        help="Add board positions as additional symbols for each node")
 
     args = parser.parse_args()
     for key, value in kwargs.items():

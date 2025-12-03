@@ -14,6 +14,11 @@ class graph_tm:
         self.games_train = games_train
         self.games_test = games_test
 
+        # If use_positions is enabled, add position symbols to the symbols list
+        if getattr(self.args, 'use_positions', False):
+            position_symbols = [f'pos_{name}' for name in self.node_names]
+            self.args.symbols = list(self.args.symbols) + position_symbols
+
         # placeholders set up later
         self.graphs_train = None
         self.graphs_test = None
@@ -93,6 +98,8 @@ class graph_tm:
     Fixed sequence of data for better comparability between different learning runs in the future.
     '''
     def fill_graphs(self, graphs, number_of_graphs, games, Y_data):
+        use_positions = getattr(self.args, 'use_positions', False)
+        
         for graph_id in range(number_of_graphs):
             if not games:
                 raise Exception('No games found')
@@ -103,7 +110,13 @@ class graph_tm:
                 i_str, j_str = node_name.split(':')
                 i = int(i_str) - 1
                 j = int(j_str) - 1
+                # Add the board state symbol (X, O, or .)
                 graphs.add_graph_node_property(graph_id, node_name, board[i][j])
+                
+                # If use_positions is enabled, also add the position symbol
+                if use_positions:
+                    position_symbol = f'pos_{node_name}'
+                    graphs.add_graph_node_property(graph_id, node_name, position_symbol)
 
             Y_data[graph_id] = np.uint32(winner)
 
